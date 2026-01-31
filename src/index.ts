@@ -30,7 +30,21 @@ let corsOptions: any = {
 if (NODE_ENV === 'development') {
   corsOptions.origin = true; // Allow all origins in dev
 } else {
-  corsOptions.origin = process.env.CORS_ORIGIN || 'http://localhost:8080';
+  // In production, allow specific origins
+  const allowedOrigins = process.env.CORS_ORIGIN 
+    ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim())
+    : ['https://techtitan-lb.com', 'http://localhost:8080'];
+  
+  corsOptions.origin = (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  };
 }
 
 app.use(cors(corsOptions));
