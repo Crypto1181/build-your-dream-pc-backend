@@ -58,11 +58,19 @@ app.use(compression());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Rate limiting
+// Rate limiting - increased for frontend that makes multiple requests on page load
+// Configurable via RATE_LIMIT_MAX and RATE_LIMIT_WINDOW_MS environment variables
+const rateLimitMax = parseInt(process.env.RATE_LIMIT_MAX || '1000', 10); // Default: 1000 requests
+const rateLimitWindowMs = parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000', 10); // Default: 15 minutes
+
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+  windowMs: rateLimitWindowMs,
+  max: rateLimitMax, // limit each IP to max requests per windowMs
   message: 'Too many requests from this IP, please try again later.',
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  // Trust proxy for accurate IP detection (important for Render, Railway, etc.)
+  trustProxy: true,
 });
 
 app.use('/api/', limiter);
