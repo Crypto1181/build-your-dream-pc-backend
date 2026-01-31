@@ -31,8 +31,10 @@ if (NODE_ENV === 'development') {
   corsOptions.origin = true; // Allow all origins in dev
 } else {
   // In production, allow specific origins
-  const allowedOrigins = process.env.CORS_ORIGIN 
-    ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim())
+  // Check both CORS_ORIGIN and ALLOWED_ORIGINS for compatibility
+  const corsOriginEnv = process.env.CORS_ORIGIN || process.env.ALLOWED_ORIGINS;
+  const allowedOrigins = corsOriginEnv 
+    ? corsOriginEnv.split(',').map(origin => origin.trim())
     : ['https://techtitan-lb.com', 'http://localhost:8080'];
   
   corsOptions.origin = (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
