@@ -163,7 +163,9 @@ async function syncCategories(siteId: string = 'site1'): Promise<number> {
             );
             if (parentResult.rows.length > 0) {
               parentDbId = parentResult.rows[0].id;
-              wooIdToDbId.set(parentWooId, parentDbId);
+              if (parentDbId !== null) {
+                wooIdToDbId.set(parentWooId, parentDbId);
+              }
             }
           }
         }
