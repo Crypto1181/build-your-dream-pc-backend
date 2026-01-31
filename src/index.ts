@@ -58,6 +58,10 @@ app.use(compression());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// Trust proxy for accurate IP detection (important for Render, Railway, etc.)
+// Must be set before rate limiter middleware
+app.set('trust proxy', 1);
+
 // Rate limiting - increased for frontend that makes multiple requests on page load
 // Configurable via RATE_LIMIT_MAX and RATE_LIMIT_WINDOW_MS environment variables
 const rateLimitMax = parseInt(process.env.RATE_LIMIT_MAX || '1000', 10); // Default: 1000 requests
@@ -69,8 +73,6 @@ const limiter = rateLimit({
   message: 'Too many requests from this IP, please try again later.',
   standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
-  // Trust proxy for accurate IP detection (important for Render, Railway, etc.)
-  trustProxy: true,
 });
 
 app.use('/api/', limiter);
