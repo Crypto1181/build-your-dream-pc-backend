@@ -60,7 +60,7 @@ export interface WooCommerceCategory {
   name: string;
   slug: string;
   description: string;
-  parent: number;
+  parent: number | null;
   count: number;
   image?: {
     id: number;

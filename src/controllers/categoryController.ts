@@ -67,12 +67,12 @@ export async function getCategoryTree(req: Request, res: Response): Promise<void
     const rootCategories: any[] = [];
 
     // First pass: create map
-    allCategories.rows.forEach((cat) => {
+    allCategories.rows.forEach((cat: any) => {
       categoryMap.set(cat.id, { ...cat, children: [] });
     });
 
     // Second pass: build tree
-    allCategories.rows.forEach((cat) => {
+    allCategories.rows.forEach((cat: any) => {
       const category = categoryMap.get(cat.id);
       if (cat.parent_id) {
         const parent = categoryMap.get(cat.parent_id);

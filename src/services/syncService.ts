@@ -150,17 +150,21 @@ async function syncCategories(siteId: string = 'site1'): Promise<number> {
         // Get the parent's database ID from our map or query
         let parentDbId: number | null = null;
         
-        if (wooIdToDbId.has(wcCategory.parent)) {
-          parentDbId = wooIdToDbId.get(wcCategory.parent)!;
-        } else {
-          // Query database for parent's database ID
-          const parentResult = await client.query(
-            'SELECT id FROM categories WHERE woo_commerce_id = $1',
-            [wcCategory.parent]
-          );
-          if (parentResult.rows.length > 0) {
-            parentDbId = parentResult.rows[0].id;
-            wooIdToDbId.set(wcCategory.parent, parentDbId);
+        // Only process if parent exists and is not 0 (root categories have parent = 0)
+        const parentWooId = wcCategory.parent;
+        if (parentWooId !== null && parentWooId !== undefined && parentWooId > 0) {
+          if (wooIdToDbId.has(parentWooId)) {
+            parentDbId = wooIdToDbId.get(parentWooId)!;
+          } else {
+            // Query database for parent's database ID
+            const parentResult = await client.query(
+              'SELECT id FROM categories WHERE woo_commerce_id = $1',
+              [parentWooId]
+            );
+            if (parentResult.rows.length > 0) {
+              parentDbId = parentResult.rows[0].id;
+              wooIdToDbId.set(parentWooId, parentDbId);
+            }
           }
         }
 

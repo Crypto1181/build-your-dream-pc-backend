@@ -77,7 +77,7 @@ export function getDatabasePool(): Pool {
   pool = new Pool(config);
 
   // Handle pool errors
-  pool.on('error', (err) => {
+  pool.on('error', (err: Error) => {
     logger.error('Unexpected error on idle client', err);
   });
 
