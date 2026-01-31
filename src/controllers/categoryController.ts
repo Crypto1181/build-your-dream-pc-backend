@@ -7,6 +7,19 @@ export async function getCategories(req: Request, res: Response): Promise<void> 
     const { parent_id, all } = req.query;
     const pool = getDatabasePool();
 
+    // Test database connection first
+    try {
+      await pool.query('SELECT 1');
+    } catch (dbError: any) {
+      logger.error('Database connection error:', dbError);
+      res.status(500).json({ 
+        error: 'Database connection failed', 
+        message: dbError.message,
+        details: 'Check DATABASE_URL environment variable and database availability'
+      });
+      return;
+    }
+
     let query = 'SELECT * FROM categories';
     const params: any[] = [];
 
@@ -29,7 +42,11 @@ export async function getCategories(req: Request, res: Response): Promise<void> 
     res.json(result.rows);
   } catch (error: any) {
     logger.error('Error fetching categories:', error);
-    res.status(500).json({ error: 'Failed to fetch categories', message: error.message });
+    res.status(500).json({ 
+      error: 'Failed to fetch categories', 
+      message: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 }
 
@@ -58,6 +75,19 @@ export async function getCategoryById(req: Request, res: Response): Promise<void
 export async function getCategoryTree(req: Request, res: Response): Promise<void> {
   try {
     const pool = getDatabasePool();
+
+    // Test database connection first
+    try {
+      await pool.query('SELECT 1');
+    } catch (dbError: any) {
+      logger.error('Database connection error:', dbError);
+      res.status(500).json({ 
+        error: 'Database connection failed', 
+        message: dbError.message,
+        details: 'Check DATABASE_URL environment variable and database availability'
+      });
+      return;
+    }
 
     // Get all categories
     const allCategories = await pool.query('SELECT * FROM categories ORDER BY parent_id NULLS FIRST, name ASC');

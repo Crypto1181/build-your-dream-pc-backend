@@ -18,6 +18,19 @@ export async function getProducts(req: Request, res: Response): Promise<void> {
     } = req.query;
 
     const pool = getDatabasePool();
+
+    // Test database connection first
+    try {
+      await pool.query('SELECT 1');
+    } catch (dbError: any) {
+      logger.error('Database connection error:', dbError);
+      res.status(500).json({ 
+        error: 'Database connection failed', 
+        message: dbError.message,
+        details: 'Check DATABASE_URL environment variable and database availability'
+      });
+      return;
+    }
     const pageNum = parseInt(page as string, 10);
     const perPage = Math.min(parseInt(per_page as string, 10), 100); // Max 100 per page
     const offset = (pageNum - 1) * perPage;
