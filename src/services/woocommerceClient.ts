@@ -37,16 +37,27 @@ export class WooCommerceClient {
         headers: {
           'Content-Type': 'application/json',
         },
-        auth: {
-          username: site.consumerKey,
-          password: site.consumerSecret,
+        // Use query parameters for authentication instead of HTTP Basic Auth
+        // This is more reliable and matches the browser test that works
+        params: {
+          consumer_key: site.consumerKey,
+          consumer_secret: site.consumerSecret,
         },
       });
 
       // Add request interceptor for logging
       client.interceptors.request.use(
         (config) => {
-          logger.debug(`WooCommerce API Request: ${config.method?.toUpperCase()} ${config.url}`);
+          const fullUrl = `${config.baseURL}${config.url}`;
+          // Log params but mask consumer_secret for security
+          const safeParams = config.params ? { ...config.params } : {};
+          if (safeParams.consumer_secret) {
+            safeParams.consumer_secret = '***MASKED***';
+          }
+          const paramsStr = Object.keys(safeParams).length > 0 
+            ? '?' + new URLSearchParams(safeParams as any).toString() 
+            : '';
+          logger.info(`WooCommerce API Request: ${config.method?.toUpperCase()} ${fullUrl}${paramsStr}`);
           return config;
         },
         (error) => {
@@ -59,10 +70,16 @@ export class WooCommerceClient {
       client.interceptors.response.use(
         (response) => response,
         (error) => {
+          const fullUrl = error.config ? `${error.config.baseURL}${error.config.url}` : 'unknown';
           logger.error(`WooCommerce API Error: ${error.message}`, {
-            url: error.config?.url,
+            fullUrl,
+            baseURL: error.config?.baseURL,
+            path: error.config?.url,
+            method: error.config?.method,
             status: error.response?.status,
+            statusText: error.response?.statusText,
             data: error.response?.data,
+            headers: error.config?.headers,
           });
           return Promise.reject(error);
         }
@@ -76,9 +93,23 @@ export class WooCommerceClient {
     const sites: WooCommerceSite[] = [];
 
     // Primary site from environment - support both naming conventions
-    const baseUrl = process.env.WOOCOMMERCE_SITE1_URL || 
-                    process.env.WOOCOMMERCE_BASE_URL || 
-                    'https://techtitanlb.com/wp-json/wc/v3';
+    let baseUrl = process.env.WOOCOMMERCE_SITE1_URL || 
+                  process.env.WOOCOMMERCE_BASE_URL || 
+                  'https://techtitanlb.com/wp-json/wc/v3';
+    
+    // Normalize URL: remove trailing slash, ensure it ends with /wp-json/wc/v3
+    baseUrl = baseUrl.trim().replace(/\/+$/, ''); // Remove trailing slashes
+    
+    // If URL doesn't end with /wp-json/wc/v3, add it
+    if (!baseUrl.endsWith('/wp-json/wc/v3')) {
+      // If it's just the domain, add the path
+      if (baseUrl.match(/^https?:\/\/[^\/]+$/)) {
+        baseUrl = `${baseUrl}/wp-json/wc/v3`;
+      } else {
+        // Otherwise, log a warning but use as-is
+        logger.warn(`⚠️ WooCommerce URL might be incorrect: ${baseUrl}. Expected format: https://domain.com/wp-json/wc/v3`);
+      }
+    }
     
     // Support both WOOCOMMERCE_CONSUMER_KEY and WOOCOMMERCE_SITE1_KEY
     const consumerKey = process.env.WOOCOMMERCE_SITE1_KEY || 
@@ -215,9 +246,17 @@ export class WooCommerceClient {
       const response = await client.get('/products/categories', {
         params: { per_page: 100 },
       });
+      logger.debug(`✅ Successfully fetched ${response.data.length} categories from ${siteId}`);
       return response.data;
     } catch (error: any) {
-      logger.error(`Error fetching categories from ${siteId}:`, error.message);
+      const fullUrl = `${client.defaults.baseURL}/products/categories`;
+      logger.error(`❌ Error fetching categories from ${siteId}:`, {
+        error: error.message,
+        fullUrl,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        responseData: error.response?.data,
+      });
       throw error;
     }
   }
