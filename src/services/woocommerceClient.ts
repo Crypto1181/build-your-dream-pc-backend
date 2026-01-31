@@ -75,10 +75,20 @@ export class WooCommerceClient {
   private getWooCommerceSites(): WooCommerceSite[] {
     const sites: WooCommerceSite[] = [];
 
-    // Primary site from environment
-    const baseUrl = process.env.WOOCOMMERCE_BASE_URL || 'https://techtitanlb.com/wp-json/wc/v3';
-    const consumerKey = process.env.WOOCOMMERCE_CONSUMER_KEY || '';
-    const consumerSecret = process.env.WOOCOMMERCE_CONSUMER_SECRET || '';
+    // Primary site from environment - support both naming conventions
+    const baseUrl = process.env.WOOCOMMERCE_SITE1_URL || 
+                    process.env.WOOCOMMERCE_BASE_URL || 
+                    'https://techtitanlb.com/wp-json/wc/v3';
+    
+    // Support both WOOCOMMERCE_CONSUMER_KEY and WOOCOMMERCE_SITE1_KEY
+    const consumerKey = process.env.WOOCOMMERCE_SITE1_KEY || 
+                        process.env.WOOCOMMERCE_CONSUMER_KEY || 
+                        '';
+    
+    // Support both WOOCOMMERCE_CONSUMER_SECRET and WOOCOMMERCE_SITE1_SECRET
+    const consumerSecret = process.env.WOOCOMMERCE_SITE1_SECRET || 
+                           process.env.WOOCOMMERCE_CONSUMER_SECRET || 
+                           '';
 
     logger.info('WooCommerce configuration check:', {
       baseUrl,
@@ -86,6 +96,14 @@ export class WooCommerceClient {
       hasConsumerSecret: !!consumerSecret,
       consumerKeyLength: consumerKey.length,
       consumerSecretLength: consumerSecret.length,
+      envVarsUsed: {
+        url: process.env.WOOCOMMERCE_SITE1_URL ? 'WOOCOMMERCE_SITE1_URL' : 
+             process.env.WOOCOMMERCE_BASE_URL ? 'WOOCOMMERCE_BASE_URL' : 'default',
+        key: process.env.WOOCOMMERCE_SITE1_KEY ? 'WOOCOMMERCE_SITE1_KEY' : 
+             process.env.WOOCOMMERCE_CONSUMER_KEY ? 'WOOCOMMERCE_CONSUMER_KEY' : 'none',
+        secret: process.env.WOOCOMMERCE_SITE1_SECRET ? 'WOOCOMMERCE_SITE1_SECRET' : 
+                process.env.WOOCOMMERCE_CONSUMER_SECRET ? 'WOOCOMMERCE_CONSUMER_SECRET' : 'none',
+      },
     });
 
     if (consumerKey && consumerSecret) {
@@ -101,6 +119,12 @@ export class WooCommerceClient {
       logger.error('❌ WooCommerce credentials missing!', {
         consumerKey: consumerKey ? 'present' : 'missing',
         consumerSecret: consumerSecret ? 'present' : 'missing',
+        checkedEnvVars: [
+          'WOOCOMMERCE_SITE1_KEY',
+          'WOOCOMMERCE_CONSUMER_KEY',
+          'WOOCOMMERCE_SITE1_SECRET',
+          'WOOCOMMERCE_CONSUMER_SECRET',
+        ],
       });
     }
 
