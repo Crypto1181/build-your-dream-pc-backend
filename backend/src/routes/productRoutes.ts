@@ -100,7 +100,9 @@ router.get('/products', async (req, res) => {
 
         // Log the query for debugging (only in development or when category is specified)
         if (category || process.env.NODE_ENV === 'development') {
-            logger.info(`Querying products with category filter: ${category}, Query: ${query.substring(0, 200)}...`);
+            logger.info(`Querying products with category filter: ${category}`);
+            logger.info(`Query: ${query}`);
+            logger.info(`Params: ${JSON.stringify(params)}`);
         }
 
         const result = await pool.query(query, params);
@@ -108,6 +110,12 @@ router.get('/products', async (req, res) => {
         // Log results for debugging
         if (category) {
             logger.info(`Found ${result.rows.length} products for category ${category}`);
+            if (result.rows.length === 0) {
+                // Debug: Check if any products exist with this category in a different format
+                const debugQuery = `SELECT id, name, categories FROM products WHERE status = 'publish' AND categories IS NOT NULL LIMIT 3`;
+                const debugResult = await pool.query(debugQuery);
+                logger.warn(`Debug: Sample products with categories: ${JSON.stringify(debugResult.rows.map((r: any) => ({ id: r.id, name: r.name, categories: r.categories })))}`);
+            }
         }
 
         // Get total count
