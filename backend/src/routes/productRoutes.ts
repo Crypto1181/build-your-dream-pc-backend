@@ -61,7 +61,10 @@ router.get('/products', async (req, res) => {
         const params: any[] = ['publish'];
         let paramIndex = 2;
 
-        if (pc_category) {
+        // IMPORTANT: If filtering by WooCommerce category ID, don't also filter by pc_component_category
+        // The category ID is more specific and reliable - pc_component_category might not be set for all products
+        // Only use pc_component_category filter if NO category ID is provided
+        if (pc_category && !category) {
             query += ` AND pc_component_category = $${paramIndex}`;
             params.push(pc_category);
             paramIndex++;
@@ -176,7 +179,9 @@ router.get('/products', async (req, res) => {
         const countParams: any[] = ['publish'];
         let countParamIndex = 2;
 
-        if (pc_category) {
+        // IMPORTANT: If filtering by WooCommerce category ID, don't also filter by pc_component_category
+        // Only use pc_component_category filter if NO category ID is provided
+        if (pc_category && !category) {
             countQuery += ` AND pc_component_category = $${countParamIndex}`;
             countParams.push(pc_category);
             countParamIndex++;
