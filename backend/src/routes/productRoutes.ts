@@ -55,11 +55,23 @@ router.get('/products', async (req, res) => {
 
         // Filter by WooCommerce category ID if provided
         // Categories are stored as JSONB array in the database
+        // Handle multiple formats: [{"id": 118}], [118], or nested objects
         if (category) {
             const categoryId = parseInt(category as string, 10);
             if (!isNaN(categoryId)) {
-                // Check if the categories JSONB array contains an object with this ID
-                query += ` AND categories::jsonb @> '[{"id": ${categoryId}}]'::jsonb`;
+                // Try multiple formats:
+                // 1. Array of objects: [{"id": 118}]
+                // 2. Array of numbers: [118]
+                // 3. Nested structure: [{"id": 118, "name": "..."}]
+                query += ` AND (
+                    categories::jsonb @> '[{"id": ${categoryId}}]'::jsonb OR
+                    categories::jsonb @> '[${categoryId}]'::jsonb OR
+                    categories::jsonb @> '{"id": ${categoryId}}'::jsonb OR
+                    EXISTS (
+                        SELECT 1 FROM jsonb_array_elements(categories) AS cat
+                        WHERE (cat->>'id')::int = ${categoryId} OR cat::text::int = ${categoryId}
+                    )
+                )`;
             }
         }
 
@@ -97,10 +109,23 @@ router.get('/products', async (req, res) => {
         }
 
         // Filter by WooCommerce category ID for count query too
+        // Handle multiple formats: [{"id": 118}], [118], or nested objects
         if (category) {
             const categoryId = parseInt(category as string, 10);
             if (!isNaN(categoryId)) {
-                countQuery += ` AND categories::jsonb @> '[{"id": ${categoryId}}]'::jsonb`;
+                // Try multiple formats:
+                // 1. Array of objects: [{"id": 118}]
+                // 2. Array of numbers: [118]
+                // 3. Nested structure: [{"id": 118, "name": "..."}]
+                countQuery += ` AND (
+                    categories::jsonb @> '[{"id": ${categoryId}}]'::jsonb OR
+                    categories::jsonb @> '[${categoryId}]'::jsonb OR
+                    categories::jsonb @> '{"id": ${categoryId}}'::jsonb OR
+                    EXISTS (
+                        SELECT 1 FROM jsonb_array_elements(categories) AS cat
+                        WHERE (cat->>'id')::int = ${categoryId} OR cat::text::int = ${categoryId}
+                    )
+                )`;
             }
         }
 
