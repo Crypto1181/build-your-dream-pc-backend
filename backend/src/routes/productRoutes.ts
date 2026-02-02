@@ -70,15 +70,25 @@ router.get('/products', async (req, res) => {
         // Filter by WooCommerce category ID if provided
         // Categories are stored as JSONB array in the database
         // WooCommerce format: [{"id": 118, "name": "Graphic Cards", ...}]
+        // Use multiple methods to ensure we catch the category regardless of format
         if (category) {
             const categoryId = parseInt(category as string, 10);
             if (!isNaN(categoryId)) {
-                // Use jsonb_array_elements to extract category IDs from array of objects
-                // This is the most reliable method that works with WooCommerce's format
-                query += ` AND EXISTS (
-                    SELECT 1 
-                    FROM jsonb_array_elements(categories) AS cat
-                    WHERE (cat->>'id')::int = $${paramIndex}
+                // Try the most reliable method first: jsonb_array_elements
+                // But also handle edge cases where categories might be stored differently
+                query += ` AND (
+                    EXISTS (
+                        SELECT 1 
+                        FROM jsonb_array_elements(categories) AS cat
+                        WHERE (cat->>'id')::int = $${paramIndex}
+                    ) OR
+                    EXISTS (
+                        SELECT 1 
+                        FROM jsonb_array_elements(categories) AS cat
+                        WHERE cat::text::int = $${paramIndex}
+                    ) OR
+                    categories::text LIKE '%"id":' || $${paramIndex} || '%' OR
+                    categories::text LIKE '%"id": ' || $${paramIndex} || '%'
                 )`;
                 params.push(categoryId);
                 paramIndex++;
@@ -112,12 +122,48 @@ router.get('/products', async (req, res) => {
             logger.info(`Params: ${JSON.stringify(params)}`);
         }
 
-        const result = await pool.query(query, params);
+        let result = await pool.query(query, params);
 
         // Log results for debugging
         if (category) {
             logger.info(`Found ${result.rows.length} products for category ${category}`);
+            
+            // If no products found, try fallback: query WooCommerce directly
             if (result.rows.length === 0) {
+                logger.warn(`No products found in database for category ${category}, trying WooCommerce direct...`);
+                try {
+                    const { wooCommerceClient } = await import('../services/woocommerceClient');
+                    const wooCommerceResult = await wooCommerceClient.fetchProducts('site1', {
+                        category: parseInt(category as string, 10),
+                        per_page: limit,
+                        page: parseInt(page as string, 10),
+                        orderby: orderby as string,
+                        order: order as string,
+                    });
+                    
+                    if (wooCommerceResult.products.length > 0) {
+                        logger.info(`Found ${wooCommerceResult.products.length} products from WooCommerce direct for category ${category}`);
+                        // Return WooCommerce products directly (bypass database)
+                        const response = {
+                            products: wooCommerceResult.products.map((p: any) => ({
+                                ...p,
+                                woo_commerce_id: p.id,
+                            })),
+                            pagination: {
+                                page: parseInt(page as string, 10),
+                                per_page: limit,
+                                total: wooCommerceResult.total || wooCommerceResult.products.length,
+                                total_pages: wooCommerceResult.totalPages || 1,
+                            },
+                        };
+                        // Don't cache this fallback result
+                        setCacheHeaders(res, 0); // No cache for fallback
+                        return res.json(response);
+                    }
+                } catch (wooError: any) {
+                    logger.error(`WooCommerce fallback failed for category ${category}:`, wooError.message);
+                }
+                
                 // Debug: Check if any products exist with this category in a different format
                 const debugQuery = `SELECT id, name, categories FROM products WHERE status = 'publish' AND categories IS NOT NULL LIMIT 3`;
                 const debugResult = await pool.query(debugQuery);
@@ -137,16 +183,23 @@ router.get('/products', async (req, res) => {
         }
 
         // Filter by WooCommerce category ID for count query too
-        // WooCommerce stores categories as array of objects: [{"id": 118, "name": "Graphic Cards", ...}]
+        // Use same multiple methods as main query for consistency
         if (category) {
             const categoryId = parseInt(category as string, 10);
             if (!isNaN(categoryId)) {
-                // Use jsonb_array_elements to extract category IDs from array of objects
-                // Use parameterized query for safety
-                countQuery += ` AND EXISTS (
-                    SELECT 1 
-                    FROM jsonb_array_elements(categories) AS cat
-                    WHERE (cat->>'id')::int = $${countParamIndex}
+                countQuery += ` AND (
+                    EXISTS (
+                        SELECT 1 
+                        FROM jsonb_array_elements(categories) AS cat
+                        WHERE (cat->>'id')::int = $${countParamIndex}
+                    ) OR
+                    EXISTS (
+                        SELECT 1 
+                        FROM jsonb_array_elements(categories) AS cat
+                        WHERE cat::text::int = $${countParamIndex}
+                    ) OR
+                    categories::text LIKE '%"id":' || $${countParamIndex} || '%' OR
+                    categories::text LIKE '%"id": ' || $${countParamIndex} || '%'
                 )`;
                 countParams.push(categoryId);
                 countParamIndex++;
