@@ -32,14 +32,21 @@ router.get('/products', async (req, res) => {
         const cacheKey = `products:${JSON.stringify({ page, per_page, category, search, pc_category, orderby, order })}`;
         
         // Check cache first (only for non-search queries to avoid stale results)
-        // BUT: Don't use cache for category queries if we just fixed the query (clear cache for category 118)
+        // IMPORTANT: Don't use cache for category queries that returned 0 results (likely stale/fixed query)
         if (!search) {
             const cached = cache.get<any>(cacheKey);
             if (cached) {
-                // If this is a category query and we got 0 results, don't use cache (might be stale)
-                if (category && cached && typeof cached === 'object' && 'products' in cached && Array.isArray(cached.products) && cached.products.length === 0) {
-                    // Clear this cache entry - might be a stale empty result
-                    cache.delete(cacheKey);
+                // If this is a category query and we got 0 results, don't use cache (might be stale from old broken query)
+                if (category && cached && typeof cached === 'object' && 'products' in cached) {
+                    if (Array.isArray(cached.products) && cached.products.length === 0) {
+                        // Clear this cache entry - might be a stale empty result from old broken query
+                        logger.warn(`Clearing stale cache for category ${category} (had 0 products)`);
+                        cache.delete(cacheKey);
+                        // Continue to fetch fresh data
+                    } else {
+                        setCacheHeaders(res, 300); // 5 minutes cache
+                        return res.json(cached);
+                    }
                 } else {
                     setCacheHeaders(res, 300); // 5 minutes cache
                     return res.json(cached);
