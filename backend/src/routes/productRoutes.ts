@@ -62,20 +62,19 @@ router.get('/products', async (req, res) => {
 
         // Filter by WooCommerce category ID if provided
         // Categories are stored as JSONB array in the database
-        // Handle multiple formats: [{"id": 118}], [118], or nested objects
+        // WooCommerce format: [{"id": 118, "name": "Graphic Cards", ...}]
         if (category) {
             const categoryId = parseInt(category as string, 10);
             if (!isNaN(categoryId)) {
-                // WooCommerce stores categories as array of objects: [{"id": 118, "name": "Graphic Cards", ...}]
-                // Use jsonb_array_elements to properly extract and check category IDs
+                // Use jsonb_array_elements to extract category IDs from array of objects
+                // This is the most reliable method that works with WooCommerce's format
                 query += ` AND EXISTS (
                     SELECT 1 
                     FROM jsonb_array_elements(categories) AS cat
-                    WHERE 
-                        (cat->>'id')::int = ${categoryId} OR
-                        (cat::text)::int = ${categoryId} OR
-                        cat::jsonb @> '{"id": ${categoryId}}'::jsonb
+                    WHERE (cat->>'id')::int = $${paramIndex}
                 )`;
+                params.push(categoryId);
+                paramIndex++;
             }
         }
 
@@ -127,15 +126,15 @@ router.get('/products', async (req, res) => {
         if (category) {
             const categoryId = parseInt(category as string, 10);
             if (!isNaN(categoryId)) {
-                // Use jsonb_array_elements to properly extract and check category IDs
+                // Use jsonb_array_elements to extract category IDs from array of objects
+                // Use parameterized query for safety
                 countQuery += ` AND EXISTS (
                     SELECT 1 
                     FROM jsonb_array_elements(categories) AS cat
-                    WHERE 
-                        (cat->>'id')::int = ${categoryId} OR
-                        (cat::text)::int = ${categoryId} OR
-                        cat::jsonb @> '{"id": ${categoryId}}'::jsonb
+                    WHERE (cat->>'id')::int = $${countParamIndex}
                 )`;
+                countParams.push(categoryId);
+                countParamIndex++;
             }
         }
 
