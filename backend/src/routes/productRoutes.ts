@@ -405,6 +405,107 @@ router.post('/cache/clear', async (req, res) => {
 });
 
 /**
+ * GET /api/debug/category/:id
+ * Debug endpoint to check category format in database
+ */
+router.get('/debug/category/:id', async (req, res) => {
+    try {
+        const categoryId = parseInt(req.params.id, 10);
+        if (isNaN(categoryId)) {
+            return res.status(400).json({ error: 'Invalid category ID' });
+        }
+
+        const pool = getDatabasePool();
+        
+        // Get a sample product with this category to see the format
+        const sampleQuery = `
+            SELECT id, name, categories 
+            FROM products 
+            WHERE categories IS NOT NULL 
+            AND categories::text != 'null'
+            AND categories::text != '[]'
+            LIMIT 5
+        `;
+        
+        const sampleResult = await pool.query(sampleQuery);
+        
+        // Try to find products with this category using different query methods
+        const testQueries = [
+            {
+                name: 'Method 1: jsonb_array_elements with id extraction',
+                query: `
+                    SELECT COUNT(*) as count
+                    FROM products 
+                    WHERE status = 'publish'
+                    AND EXISTS (
+                        SELECT 1 
+                        FROM jsonb_array_elements(categories) AS cat
+                        WHERE (cat->>'id')::int = $1
+                    )
+                `,
+                params: [categoryId]
+            },
+            {
+                name: 'Method 2: Direct jsonb containment',
+                query: `
+                    SELECT COUNT(*) as count
+                    FROM products 
+                    WHERE status = 'publish'
+                    AND categories::jsonb @> '[{"id": $1}]'::jsonb
+                `,
+                params: [categoryId]
+            },
+            {
+                name: 'Method 3: Text search in jsonb',
+                query: `
+                    SELECT COUNT(*) as count
+                    FROM products 
+                    WHERE status = 'publish'
+                    AND categories::text LIKE '%"id":' || $1 || '%'
+                `,
+                params: [categoryId]
+            }
+        ];
+
+        const results: any = {
+            categoryId,
+            sampleProducts: sampleResult.rows.map((row: any) => ({
+                id: row.id,
+                name: row.name,
+                categoriesFormat: typeof row.categories,
+                categoriesSample: row.categories
+            })),
+            testResults: []
+        };
+
+        for (const testQuery of testQueries) {
+            try {
+                const result = await pool.query(testQuery.query, testQuery.params);
+                results.testResults.push({
+                    method: testQuery.name,
+                    count: parseInt(result.rows[0].count, 10),
+                    success: true
+                });
+            } catch (error: any) {
+                results.testResults.push({
+                    method: testQuery.name,
+                    error: error.message,
+                    success: false
+                });
+            }
+        }
+
+        res.json(results);
+    } catch (error: any) {
+        logger.error('Error debugging category:', error);
+        res.status(500).json({
+            error: 'Failed to debug category',
+            message: error.message,
+        });
+    }
+});
+
+/**
  * GET /api/woocommerce/products
  * Direct proxy to WooCommerce API (bypasses database)
  */
