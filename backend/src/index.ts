@@ -4,6 +4,7 @@ import compression from 'compression';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
 import { createServer } from 'http';
+import { get as httpGet } from 'http';
 import { logger } from './utils/logger';
 import { connectDatabase } from './database/connection';
 import { setupRoutes } from './routes';
@@ -45,7 +46,7 @@ const limiter = rateLimit({
 
 app.use('/api/', limiter);
 
-// Health check endpoint
+// Health check endpoint (also used as keep-alive for Render free tier)
 app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
@@ -53,6 +54,11 @@ app.get('/health', (req, res) => {
     environment: NODE_ENV,
   });
 });
+
+// Keep-alive mechanism to prevent cold starts on Render free tier
+// Note: This should be set up externally (e.g., using a service like UptimeRobot)
+// Render free tier spins down after 15 minutes of inactivity
+// You can use a free service like UptimeRobot to ping /health every 14 minutes
 
 // API routes
 setupRoutes(app);

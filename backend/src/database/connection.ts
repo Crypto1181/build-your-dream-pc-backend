@@ -20,9 +20,11 @@ export function getDatabasePool(): Pool {
         database: process.env.DB_NAME || 'pc_builder_db',
         user: process.env.DB_USER || 'postgres',
         password: process.env.DB_PASSWORD || '',
-        max: 20, // Maximum number of clients in the pool
+        max: 10, // Reduced for free tier (Render free tier has limited connections)
         idleTimeoutMillis: 30000,
-        connectionTimeoutMillis: 2000,
+        connectionTimeoutMillis: 5000, // Increased timeout for slower connections
+        keepAlive: true,
+        keepAliveInitialDelayMillis: 10000, // Keep connections alive
       };
 
   pool = new Pool(config);

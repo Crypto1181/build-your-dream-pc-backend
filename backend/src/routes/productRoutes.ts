@@ -2,8 +2,15 @@ import { Router } from 'express';
 import { logger } from '../utils/logger';
 import { wooCommerceClient } from '../services/woocommerceClient';
 import { getDatabasePool } from '../database/connection';
+import { cache } from '../utils/cache';
 
 const router = Router();
+
+// Helper function to set cache headers
+const setCacheHeaders = (res: any, maxAge: number = 300) => {
+  res.set('Cache-Control', `public, max-age=${maxAge}, stale-while-revalidate=60`);
+  res.set('Vary', 'Accept-Encoding');
+};
 
 /**
  * GET /api/products
@@ -20,6 +27,18 @@ router.get('/products', async (req, res) => {
             orderby = 'date',
             order = 'desc',
         } = req.query;
+
+        // Create cache key from query params
+        const cacheKey = `products:${JSON.stringify({ page, per_page, category, search, pc_category, orderby, order })}`;
+        
+        // Check cache first (only for non-search queries to avoid stale results)
+        if (!search) {
+            const cached = cache.get(cacheKey);
+            if (cached) {
+                setCacheHeaders(res, 300); // 5 minutes cache
+                return res.json(cached);
+            }
+        }
 
         const pool = getDatabasePool();
 
@@ -94,8 +113,8 @@ router.get('/products', async (req, res) => {
         const total = parseInt(countResult.rows[0].count, 10);
         const totalPages = Math.ceil(total / limit);
 
-        // Return in a format compatible with frontend expectations
-        res.json({
+        // Prepare response
+        const response = {
             products: result.rows,
             pagination: {
                 page: parseInt(page as string, 10),
@@ -103,7 +122,17 @@ router.get('/products', async (req, res) => {
                 total: total,
                 total_pages: totalPages,
             },
-        });
+        };
+
+        // Cache the response (only for non-search queries)
+        if (!search) {
+            cache.set(cacheKey, response, 5 * 60 * 1000); // 5 minutes
+        }
+
+        // Set cache headers
+        setCacheHeaders(res, search ? 60 : 300); // Shorter cache for search results
+
+        res.json(response);
     } catch (error: any) {
         logger.error('Error fetching products:', error);
         res.status(500).json({
@@ -120,6 +149,15 @@ router.get('/products', async (req, res) => {
 router.get('/products/:id', async (req, res) => {
     try {
         const { id } = req.params;
+        
+        // Check cache first
+        const cacheKey = `product:${id}`;
+        const cached = cache.get(cacheKey);
+        if (cached) {
+            setCacheHeaders(res, 300); // 5 minutes cache
+            return res.json(cached);
+        }
+
         const pool = getDatabasePool();
 
         const result = await pool.query(
@@ -132,6 +170,12 @@ router.get('/products/:id', async (req, res) => {
                 error: 'Product not found',
             });
         }
+
+        // Cache the result
+        cache.set(cacheKey, result.rows[0], 5 * 60 * 1000); // 5 minutes
+
+        // Set cache headers
+        setCacheHeaders(res, 300); // 5 minutes
 
         res.json(result.rows[0]);
     } catch (error: any) {
@@ -149,11 +193,25 @@ router.get('/products/:id', async (req, res) => {
  */
 router.get('/categories', async (req, res) => {
     try {
+        // Check cache first (categories change rarely)
+        const cacheKey = 'categories:all';
+        const cached = cache.get(cacheKey);
+        if (cached) {
+            setCacheHeaders(res, 600); // 10 minutes cache for categories
+            return res.json(cached);
+        }
+
         const pool = getDatabasePool();
 
         const result = await pool.query(
             'SELECT * FROM categories ORDER BY name ASC'
         );
+
+        // Cache the result
+        cache.set(cacheKey, result.rows, 10 * 60 * 1000); // 10 minutes
+
+        // Set cache headers
+        setCacheHeaders(res, 600); // 10 minutes
 
         res.json(result.rows);
     } catch (error: any) {
