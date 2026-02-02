@@ -32,11 +32,18 @@ router.get('/products', async (req, res) => {
         const cacheKey = `products:${JSON.stringify({ page, per_page, category, search, pc_category, orderby, order })}`;
         
         // Check cache first (only for non-search queries to avoid stale results)
+        // BUT: Don't use cache for category queries if we just fixed the query (clear cache for category 118)
         if (!search) {
-            const cached = cache.get(cacheKey);
+            const cached = cache.get<any>(cacheKey);
             if (cached) {
-                setCacheHeaders(res, 300); // 5 minutes cache
-                return res.json(cached);
+                // If this is a category query and we got 0 results, don't use cache (might be stale)
+                if (category && cached && typeof cached === 'object' && 'products' in cached && Array.isArray(cached.products) && cached.products.length === 0) {
+                    // Clear this cache entry - might be a stale empty result
+                    cache.delete(cacheKey);
+                } else {
+                    setCacheHeaders(res, 300); // 5 minutes cache
+                    return res.json(cached);
+                }
             }
         }
 
@@ -59,18 +66,15 @@ router.get('/products', async (req, res) => {
         if (category) {
             const categoryId = parseInt(category as string, 10);
             if (!isNaN(categoryId)) {
-                // Try multiple formats:
-                // 1. Array of objects: [{"id": 118}]
-                // 2. Array of numbers: [118]
-                // 3. Nested structure: [{"id": 118, "name": "..."}]
-                query += ` AND (
-                    categories::jsonb @> '[{"id": ${categoryId}}]'::jsonb OR
-                    categories::jsonb @> '[${categoryId}]'::jsonb OR
-                    categories::jsonb @> '{"id": ${categoryId}}'::jsonb OR
-                    EXISTS (
-                        SELECT 1 FROM jsonb_array_elements(categories) AS cat
-                        WHERE (cat->>'id')::int = ${categoryId} OR cat::text::int = ${categoryId}
-                    )
+                // WooCommerce stores categories as array of objects: [{"id": 118, "name": "Graphic Cards", ...}]
+                // Use jsonb_array_elements to properly extract and check category IDs
+                query += ` AND EXISTS (
+                    SELECT 1 
+                    FROM jsonb_array_elements(categories) AS cat
+                    WHERE 
+                        (cat->>'id')::int = ${categoryId} OR
+                        (cat::text)::int = ${categoryId} OR
+                        cat::jsonb @> '{"id": ${categoryId}}'::jsonb
                 )`;
             }
         }
@@ -95,7 +99,17 @@ router.get('/products', async (req, res) => {
         query += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
         params.push(limit, offset);
 
+        // Log the query for debugging (only in development or when category is specified)
+        if (category || process.env.NODE_ENV === 'development') {
+            logger.info(`Querying products with category filter: ${category}, Query: ${query.substring(0, 200)}...`);
+        }
+
         const result = await pool.query(query, params);
+
+        // Log results for debugging
+        if (category) {
+            logger.info(`Found ${result.rows.length} products for category ${category}`);
+        }
 
         // Get total count
         let countQuery = 'SELECT COUNT(*) FROM products WHERE status = $1';
@@ -109,22 +123,18 @@ router.get('/products', async (req, res) => {
         }
 
         // Filter by WooCommerce category ID for count query too
-        // Handle multiple formats: [{"id": 118}], [118], or nested objects
+        // WooCommerce stores categories as array of objects: [{"id": 118, "name": "Graphic Cards", ...}]
         if (category) {
             const categoryId = parseInt(category as string, 10);
             if (!isNaN(categoryId)) {
-                // Try multiple formats:
-                // 1. Array of objects: [{"id": 118}]
-                // 2. Array of numbers: [118]
-                // 3. Nested structure: [{"id": 118, "name": "..."}]
-                countQuery += ` AND (
-                    categories::jsonb @> '[{"id": ${categoryId}}]'::jsonb OR
-                    categories::jsonb @> '[${categoryId}]'::jsonb OR
-                    categories::jsonb @> '{"id": ${categoryId}}'::jsonb OR
-                    EXISTS (
-                        SELECT 1 FROM jsonb_array_elements(categories) AS cat
-                        WHERE (cat->>'id')::int = ${categoryId} OR cat::text::int = ${categoryId}
-                    )
+                // Use jsonb_array_elements to properly extract and check category IDs
+                countQuery += ` AND EXISTS (
+                    SELECT 1 
+                    FROM jsonb_array_elements(categories) AS cat
+                    WHERE 
+                        (cat->>'id')::int = ${categoryId} OR
+                        (cat::text)::int = ${categoryId} OR
+                        cat::jsonb @> '{"id": ${categoryId}}'::jsonb
                 )`;
             }
         }
@@ -150,8 +160,14 @@ router.get('/products', async (req, res) => {
         };
 
         // Cache the response (only for non-search queries)
+        // But don't cache empty results for category queries (might indicate a problem)
         if (!search) {
-            cache.set(cacheKey, response, 5 * 60 * 1000); // 5 minutes
+            if (category && response.products.length === 0) {
+                // Don't cache empty category results - might be a query issue
+                logger.warn(`Not caching empty result for category ${category} - query might need fixing`);
+            } else {
+                cache.set(cacheKey, response, 5 * 60 * 1000); // 5 minutes
+            }
         }
 
         // Set cache headers
@@ -348,6 +364,41 @@ router.post('/sync/products', async (req, res) => {
         logger.error('Error syncing products:', error);
         res.status(500).json({
             error: 'Failed to sync products',
+            message: error.message,
+        });
+    }
+});
+
+/**
+ * POST /api/cache/clear
+ * Clear product cache (useful for debugging category issues)
+ */
+router.post('/cache/clear', async (req, res) => {
+    try {
+        const { category } = req.body;
+        
+        if (category) {
+            // Clear cache for specific category
+            const categoryId = parseInt(category, 10);
+            if (!isNaN(categoryId)) {
+                // Clear all cache entries that might contain this category
+                const cacheKeys = ['products:' + JSON.stringify({ category: categoryId })];
+                cacheKeys.forEach(key => cache.delete(key));
+                logger.info(`Cleared cache for category ${categoryId}`);
+                res.json({ success: true, message: `Cache cleared for category ${categoryId}` });
+            } else {
+                res.status(400).json({ error: 'Invalid category ID' });
+            }
+        } else {
+            // Clear all cache
+            cache.clear();
+            logger.info('Cleared all product cache');
+            res.json({ success: true, message: 'All cache cleared' });
+        }
+    } catch (error: any) {
+        logger.error('Error clearing cache:', error);
+        res.status(500).json({
+            error: 'Failed to clear cache',
             message: error.message,
         });
     }
