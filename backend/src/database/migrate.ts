@@ -14,22 +14,9 @@ async function runMigrations() {
     const schemaPath = join(__dirname, 'schema.sql');
     const schema = readFileSync(schemaPath, 'utf-8');
 
-    // Split by semicolons and execute each statement
-    const statements = schema
-      .split(';')
-      .map((s) => s.trim())
-      .filter((s) => s.length > 0 && !s.startsWith('--'));
-
-    for (const statement of statements) {
-      try {
-        await client.query(statement);
-      } catch (error: any) {
-        // Ignore "already exists" errors
-        if (error.code !== '42P07' && error.code !== '42710') {
-          logger.warn('Migration statement warning:', error.message);
-        }
-      }
-    }
+    // Execute the entire schema as a single query
+    // This avoids issues with splitting by semicolon which breaks function definitions
+    await client.query(schema);
 
     logger.info('✅ Database migrations completed successfully');
   } catch (error) {

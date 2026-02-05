@@ -123,3 +123,16 @@ CREATE TRIGGER update_products_updated_at
 -- Create indexes for common queries
 CREATE INDEX IF NOT EXISTS idx_products_categories_gin ON products USING GIN (categories);
 CREATE INDEX IF NOT EXISTS idx_products_attributes_gin ON products USING GIN (attributes);
+
+-- Site settings table
+CREATE TABLE IF NOT EXISTS site_settings (
+    id SERIAL PRIMARY KEY,
+    key VARCHAR(255) UNIQUE NOT NULL,
+    value TEXT,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Insert default catalog URL if not exists
+INSERT INTO site_settings (key, value)
+VALUES ('catalog_url', '/catalogs/peripherals-october-2025.pdf')
+ON CONFLICT (key) DO NOTHING;
