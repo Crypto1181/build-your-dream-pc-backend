@@ -301,6 +301,56 @@ router.get('/products/:id', async (req, res) => {
 });
 
 /**
+ * GET /api/categories/tree
+ * Fetch categories as a hierarchical tree
+ */
+router.get('/categories/tree', async (req, res) => {
+    try {
+        const cacheKey = 'categories:tree';
+        const cached = cache.get(cacheKey);
+        if (cached) {
+            setCacheHeaders(res, 600);
+            return res.json(cached);
+        }
+
+        const pool = getDatabasePool();
+        const result = await pool.query('SELECT * FROM categories ORDER BY name ASC');
+        const categories = result.rows;
+
+        // Build tree
+        const categoryMap = new Map();
+        const rootCategories: any[] = [];
+
+        // Initialize map
+        categories.forEach(cat => {
+            categoryMap.set(cat.id, { ...cat, children: [] });
+        });
+
+        // Build hierarchy
+        categories.forEach(cat => {
+            if (cat.parent_id) {
+                const parent = categoryMap.get(cat.parent_id);
+                if (parent) {
+                    parent.children.push(categoryMap.get(cat.id));
+                } else {
+                    // Parent not found (orphan), treat as root
+                    rootCategories.push(categoryMap.get(cat.id));
+                }
+            } else {
+                rootCategories.push(categoryMap.get(cat.id));
+            }
+        });
+
+        cache.set(cacheKey, rootCategories, 10 * 60 * 1000);
+        setCacheHeaders(res, 600);
+        res.json(rootCategories);
+    } catch (error: any) {
+        logger.error('Error fetching category tree:', error);
+        res.status(500).json({ error: 'Failed to fetch category tree' });
+    }
+});
+
+/**
  * GET /api/categories
  * Fetch all categories
  */

@@ -87,6 +87,10 @@ async function startServer() {
     await connectDatabase();
     logger.info('✅ Database connected successfully');
 
+    // Run migrations
+    const { runMigrations } = await import('./database/migrate');
+    await runMigrations();
+
     // Start sync scheduler if enabled
     if (process.env.SYNC_ENABLED !== 'false') {
       startSyncScheduler();

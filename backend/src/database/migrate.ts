@@ -37,14 +37,18 @@ async function runMigrations() {
     throw error;
   } finally {
     client.release();
-    await pool.end();
+    // Do not close the pool here as it's a singleton used by the app
+    // await pool.end();
   }
 }
 
 // Run migrations if this file is executed directly
 if (require.main === module) {
   runMigrations()
-    .then(() => {
+    .then(async () => {
+      // Only close pool if running as a standalone script
+      const { closeDatabase } = await import('./connection');
+      await closeDatabase();
       process.exit(0);
     })
     .catch((error) => {
