@@ -77,21 +77,22 @@ router.get('/products', async (req, res) => {
         if (category) {
             const categoryId = parseInt(category as string, 10);
             if (!isNaN(categoryId)) {
-                // Try the most reliable method first: jsonb_array_elements
-                // But also handle edge cases where categories might be stored differently
+                // Safely query JSONB categories array
+                // We handle two cases:
+                // 1. Array of objects with 'id' property: [{"id": 118, "name": "..."}, ...]
+                // 2. Array of integers (legacy/simple): [118, 119, ...]
+                // We use @> operator which is safe and efficient for both cases
                 query += ` AND (
-                    EXISTS (
-                        SELECT 1 
-                        FROM jsonb_array_elements(categories) AS cat
-                        WHERE (cat->>'id')::int = $${paramIndex}
-                    ) OR
-                    EXISTS (
-                        SELECT 1 
-                        FROM jsonb_array_elements(categories) AS cat
-                        WHERE cat::text::int = $${paramIndex}
-                    ) OR
-                    categories::text LIKE '%"id":' || $${paramIndex} || '%' OR
-                    categories::text LIKE '%"id": ' || $${paramIndex} || '%'
+                    -- Check if it contains an object with this id
+                    categories @> ('[{"id": ' || $${paramIndex} || '}]')::jsonb
+                    OR
+                    -- Check if it contains the integer directly (for simple array format)
+                    categories @> ('[' || $${paramIndex} || ']')::jsonb
+                    OR
+                    -- Fallback string search for robustness (safe for any text)
+                    categories::text LIKE '%"id":' || $${paramIndex} || ',%' OR
+                    categories::text LIKE '%"id":' || $${paramIndex} || '}%' OR
+                    categories::text LIKE '%"id": ' || $${paramIndex} || ',%'
                 )`;
                 params.push(categoryId);
                 paramIndex++;
@@ -193,18 +194,13 @@ router.get('/products', async (req, res) => {
             const categoryId = parseInt(category as string, 10);
             if (!isNaN(categoryId)) {
                 countQuery += ` AND (
-                    EXISTS (
-                        SELECT 1 
-                        FROM jsonb_array_elements(categories) AS cat
-                        WHERE (cat->>'id')::int = $${countParamIndex}
-                    ) OR
-                    EXISTS (
-                        SELECT 1 
-                        FROM jsonb_array_elements(categories) AS cat
-                        WHERE cat::text::int = $${countParamIndex}
-                    ) OR
-                    categories::text LIKE '%"id":' || $${countParamIndex} || '%' OR
-                    categories::text LIKE '%"id": ' || $${countParamIndex} || '%'
+                    categories @> ('[{"id": ' || $${countParamIndex} || '}]')::jsonb
+                    OR
+                    categories @> ('[' || $${countParamIndex} || ']')::jsonb
+                    OR
+                    categories::text LIKE '%"id":' || $${countParamIndex} || ',%' OR
+                    categories::text LIKE '%"id":' || $${countParamIndex} || '}%' OR
+                    categories::text LIKE '%"id": ' || $${countParamIndex} || ',%'
                 )`;
                 countParams.push(categoryId);
                 countParamIndex++;
