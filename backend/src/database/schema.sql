@@ -15,11 +15,12 @@ CREATE TABLE IF NOT EXISTS categories (
     image_url TEXT,
     count INTEGER DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_categories_slug (slug),
-    INDEX idx_categories_parent (parent_id),
-    INDEX idx_categories_woo_id (woo_commerce_id)
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE INDEX IF NOT EXISTS idx_categories_slug ON categories(slug);
+CREATE INDEX IF NOT EXISTS idx_categories_parent ON categories(parent_id);
+CREATE INDEX IF NOT EXISTS idx_categories_woo_id ON categories(woo_commerce_id);
 
 -- Products table
 CREATE TABLE IF NOT EXISTS products (
@@ -55,16 +56,17 @@ CREATE TABLE IF NOT EXISTS products (
     site_name VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    synced_at TIMESTAMP,
-    INDEX idx_products_slug (slug),
-    INDEX idx_products_sku (sku),
-    INDEX idx_products_status (status),
-    INDEX idx_products_featured (featured),
-    INDEX idx_products_pc_category (pc_component_category),
-    INDEX idx_products_woo_id (woo_commerce_id),
-    INDEX idx_products_price (price),
-    INDEX idx_products_updated (updated_at)
+    synced_at TIMESTAMP
 );
+
+CREATE INDEX IF NOT EXISTS idx_products_slug ON products(slug);
+CREATE INDEX IF NOT EXISTS idx_products_sku ON products(sku);
+CREATE INDEX IF NOT EXISTS idx_products_status ON products(status);
+CREATE INDEX IF NOT EXISTS idx_products_featured ON products(featured);
+CREATE INDEX IF NOT EXISTS idx_products_pc_category ON products(pc_component_category);
+CREATE INDEX IF NOT EXISTS idx_products_woo_id ON products(woo_commerce_id);
+CREATE INDEX IF NOT EXISTS idx_products_price ON products(price);
+CREATE INDEX IF NOT EXISTS idx_products_updated ON products(updated_at);
 
 -- Full-text search index for products
 CREATE INDEX IF NOT EXISTS idx_products_search ON products USING GIN (

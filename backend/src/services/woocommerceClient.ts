@@ -59,7 +59,8 @@ export class WooCommerceClient {
     const sites: WooCommerceSite[] = [];
 
     // Primary site from environment
-    const baseUrl = process.env.WOOCOMMERCE_BASE_URL || 'https://techtitanlb.com/wp-json/wc/v3';
+    // Use WOOCOMMERCE_URL if present (Render style), otherwise WOOCOMMERCE_BASE_URL
+    const baseUrl = process.env.WOOCOMMERCE_URL || process.env.WOOCOMMERCE_BASE_URL || 'https://techtitan-lb.com/wp-json/wc/v3';
     const consumerKey = process.env.WOOCOMMERCE_CONSUMER_KEY || '';
     const consumerSecret = process.env.WOOCOMMERCE_CONSUMER_SECRET || '';
 
