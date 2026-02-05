@@ -1,4 +1,4 @@
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import dotenv from 'dotenv';
 import { getDatabasePool } from './connection';
@@ -15,7 +15,17 @@ async function runMigrations() {
     logger.info('Running database migrations...');
 
     // Read schema file
-    const schemaPath = join(__dirname, 'schema.sql');
+    let schemaPath = join(__dirname, 'schema.sql');
+
+    // If schema.sql is not found in current dir (e.g. dist/), try to find it in src
+    if (!existsSync(schemaPath)) {
+      const srcPath = join(process.cwd(), 'src', 'database', 'schema.sql');
+      if (existsSync(srcPath)) {
+        schemaPath = srcPath;
+        logger.info(`Schema file found at: ${schemaPath}`);
+      }
+    }
+
     const schema = readFileSync(schemaPath, 'utf-8');
 
     // Execute the entire schema as a single query
