@@ -1,7 +1,11 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
+import dotenv from 'dotenv';
 import { getDatabasePool } from './connection';
 import { logger } from '../utils/logger';
+
+// Load environment variables when running standalone
+dotenv.config();
 
 async function runMigrations() {
   const pool = getDatabasePool();
