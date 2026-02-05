@@ -248,9 +248,13 @@ router.get('/products', async (req, res) => {
         res.json(response);
     } catch (error: any) {
         logger.error('Error fetching products:', error);
+        
+        // Return detailed error in response for debugging (remove in production later if needed)
         res.status(500).json({
             error: 'Failed to fetch products',
             message: error.message,
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+            details: error.response?.data || error.code // Include database or API error details
         });
     }
 });
