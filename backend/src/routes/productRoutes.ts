@@ -262,9 +262,17 @@ router.get('/products', async (req, res) => {
 router.get('/products/:id', async (req, res) => {
     try {
         const { id } = req.params;
+        const productId = parseInt(id, 10);
+
+        if (isNaN(productId)) {
+            return res.status(400).json({
+                error: 'Invalid product ID',
+                message: 'Product ID must be a number'
+            });
+        }
         
         // Check cache first
-        const cacheKey = `product:${id}`;
+        const cacheKey = `product:${productId}`;
         const cached = cache.get(cacheKey);
         if (cached) {
             setCacheHeaders(res, 300); // 5 minutes cache
@@ -272,10 +280,17 @@ router.get('/products/:id', async (req, res) => {
         }
 
         const pool = getDatabasePool();
-
+ 
         const result = await pool.query(
-            'SELECT * FROM products WHERE id = $1 OR woo_commerce_id = $1',
-            [id]
+            `SELECT * FROM products 
+             WHERE id = $1 OR woo_commerce_id = $1 
+             ORDER BY 
+               CASE 
+                 WHEN woo_commerce_id = $1 THEN 0 
+                 ELSE 1 
+               END 
+             LIMIT 1`,
+            [productId]
         );
 
         if (result.rows.length === 0) {
