@@ -15,12 +15,16 @@ import rateLimit from 'express-rate-limit';
 dotenv.config();
 
 // Check for required environment variables
-const requiredEnvVars = ['DATABASE_URL', 'WOOCOMMERCE_URL', 'WOOCOMMERCE_CONSUMER_KEY', 'WOOCOMMERCE_CONSUMER_SECRET'];
-const missingEnvVars = requiredEnvVars.filter(key => !process.env[key]);
+const hasWooCommerce = (process.env.WOOCOMMERCE_CONSUMER_KEY && process.env.WOOCOMMERCE_CONSUMER_SECRET) || 
+                       (process.env.WOOCOMMERCE_SITE1_KEY && process.env.WOOCOMMERCE_SITE1_SECRET);
 
-if (missingEnvVars.length > 0) {
-  logger.warn(`⚠️  WARNING: Missing environment variables: ${missingEnvVars.join(', ')}`);
-  logger.warn('⚠️  Some features may not work correctly.');
+if (!process.env.DATABASE_URL) {
+  logger.warn('⚠️  WARNING: Missing DATABASE_URL environment variable');
+}
+
+if (!hasWooCommerce) {
+  logger.warn('⚠️  WARNING: Missing WooCommerce credentials (WOOCOMMERCE_CONSUMER_KEY/SECRET or WOOCOMMERCE_SITE1_KEY/SECRET)');
+  logger.warn('⚠️  WooCommerce integration will not work.');
 }
 
 const app = express();
