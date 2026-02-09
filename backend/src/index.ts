@@ -19,7 +19,16 @@ const PORT = process.env.PORT || 3001;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 
 // Security middleware
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      // Allow the frontend to frame this API (needed for the PDF proxy)
+      frameAncestors: ["'self'", process.env.CORS_ORIGIN || "*", "https://techtitan-lb.com", "http://localhost:8080"],
+    },
+  },
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+}));
 
 // CORS configuration
 const corsOptions = {

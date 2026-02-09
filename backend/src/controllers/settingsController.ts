@@ -82,6 +82,22 @@ export const getCatalogFile = async (req: Request, res: Response) => {
       catalogUrl = catalogUrl.replace('github.com', 'raw.githubusercontent.com').replace('/blob/', '/');
     }
 
+    // Convert Google Drive "View" links to "Preview" links (embeddable)
+    // From: https://drive.google.com/file/d/ID/view?usp=...
+    // To:   https://drive.google.com/file/d/ID/preview
+    if (catalogUrl.includes('drive.google.com') && (catalogUrl.includes('/view') || catalogUrl.endsWith('/view'))) {
+      const match = catalogUrl.match(/\/d\/([^/]+)/);
+      if (match && match[1]) {
+        const fileId = match[1];
+        const previewUrl = `https://drive.google.com/file/d/${fileId}/preview`;
+        logger.info(`Converting Google Drive link to preview URL: ${previewUrl}`);
+        // For Google Drive, we redirect the browser to the preview URL
+        // because Google blocks server-side proxying without complex auth
+        // and 'preview' URL is designed for iframe embedding.
+        return res.redirect(previewUrl);
+      }
+    }
+
     logger.info(`Proxying catalog from: ${catalogUrl}`);
 
     const headers: Record<string, string> = {};
