@@ -14,6 +14,15 @@ import rateLimit from 'express-rate-limit';
 // Load environment variables
 dotenv.config();
 
+// Check for required environment variables
+const requiredEnvVars = ['DATABASE_URL', 'WOOCOMMERCE_URL', 'WOOCOMMERCE_CONSUMER_KEY', 'WOOCOMMERCE_CONSUMER_SECRET'];
+const missingEnvVars = requiredEnvVars.filter(key => !process.env[key]);
+
+if (missingEnvVars.length > 0) {
+  logger.warn(`⚠️  WARNING: Missing environment variables: ${missingEnvVars.join(', ')}`);
+  logger.warn('⚠️  Some features may not work correctly.');
+}
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 const NODE_ENV = process.env.NODE_ENV || 'development';

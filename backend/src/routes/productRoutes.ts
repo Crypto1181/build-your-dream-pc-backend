@@ -37,7 +37,7 @@ router.get('/woocommerce/products', async (req, res) => {
             per_page: parseInt(per_page as string, 10),
             category: category ? parseInt(category as string, 10) : undefined,
             search: search as string,
-            featured: featured === 'true',
+            featured: featured === 'true' ? true : (featured === 'false' ? false : undefined),
             orderby: orderby as string,
             order: order as string,
         });
