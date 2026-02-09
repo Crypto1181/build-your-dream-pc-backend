@@ -93,7 +93,8 @@ router.get('/products', async (req, res) => {
         
         // Check cache first (only for non-search queries to avoid stale results)
         // IMPORTANT: Don't use cache for category queries that returned 0 results (likely stale/fixed query)
-        if (!search) {
+        // ALSO: Don't cache random order queries, otherwise everyone sees the same "random" products
+        if (!search && orderby !== 'rand') {
             const cached = cache.get<any>(cacheKey);
             if (cached) {
                 // If this is a category query and we got 0 results, don't use cache (might be stale from old broken query)
@@ -306,7 +307,8 @@ router.get('/products', async (req, res) => {
 
         // Cache the response (only for non-search queries)
         // But don't cache empty results for category queries (might indicate a problem)
-        if (!search) {
+        // And don't cache random order results
+        if (!search && orderby !== 'rand') {
             if (category && response.products.length === 0) {
                 // Don't cache empty category results - might be a query issue
                 logger.warn(`Not caching empty result for category ${category} - query might need fixing`);
@@ -371,6 +373,31 @@ router.get('/products/:id', async (req, res) => {
         );
 
         if (result.rows.length === 0) {
+            // Fallback: Try to fetch from WooCommerce directly
+            // This is needed for "live" products that haven't been synced to the DB yet
+            try {
+                logger.info(`Product ${productId} not found in DB, trying WooCommerce fallback...`);
+                const product = await wooCommerceClient.fetchProductById('site1', productId);
+                
+                if (product) {
+                    const transformedProduct = {
+                        ...product,
+                        woo_commerce_id: product.id,
+                        // Ensure compatibility with frontend expected format
+                        // Database stores images as JSONB, API returns object array
+                        // Need to ensure it matches what DB would return
+                    };
+                    
+                    // Cache this fallback result too
+                    cache.set(cacheKey, transformedProduct, 5 * 60 * 1000);
+                    setCacheHeaders(res, 300);
+                    return res.json(transformedProduct);
+                }
+            } catch (wooError: any) {
+                logger.error(`WooCommerce fallback failed for product ${productId}:`, wooError.message);
+                // If both fail, return 404
+            }
+
             return res.status(404).json({
                 error: 'Product not found',
             });
