@@ -13,6 +13,65 @@ const setCacheHeaders = (res: any, maxAge: number = 300) => {
 };
 
 /**
+ * GET /api/woocommerce/products
+ * Fetch products directly from WooCommerce (proxy)
+ * This is used when useLive=true in frontend
+ */
+router.get('/woocommerce/products', async (req, res) => {
+    try {
+        const {
+            page = '1',
+            per_page = '20',
+            category,
+            search,
+            featured,
+            orderby = 'date',
+            order = 'desc',
+        } = req.query;
+
+        // Log the proxy request
+        logger.info(`Proxying WooCommerce request: page=${page}, per_page=${per_page}, featured=${featured}, orderby=${orderby}`);
+
+        const result = await wooCommerceClient.fetchProducts('site1', {
+            page: parseInt(page as string, 10),
+            per_page: parseInt(per_page as string, 10),
+            category: category ? parseInt(category as string, 10) : undefined,
+            search: search as string,
+            featured: featured === 'true',
+            orderby: orderby as string,
+            order: order as string,
+        });
+
+        // Add woo_commerce_id to match database format expected by frontend
+        // The frontend backendApi.ts -> transformBackendProductToWooCommerce expects certain fields
+        const products = result.products.map((p: any) => ({
+            ...p,
+            woo_commerce_id: p.id,
+            // Ensure images are in the expected format (WooCommerce API returns array of objects, which is what we want)
+        }));
+
+        // No caching for live requests
+        setCacheHeaders(res, 0);
+
+        res.json({
+            products,
+            pagination: {
+                page: parseInt(page as string, 10),
+                per_page: parseInt(per_page as string, 10),
+                total: result.total,
+                total_pages: result.totalPages,
+            },
+        });
+    } catch (error: any) {
+        logger.error('Error proxying to WooCommerce:', error);
+        res.status(500).json({
+            error: 'Failed to fetch from WooCommerce',
+            message: error.message,
+        });
+    }
+});
+
+/**
  * GET /api/products
  * Fetch products from database (cached) or WooCommerce API
  */
@@ -24,12 +83,13 @@ router.get('/products', async (req, res) => {
             category,
             search,
             pc_category,
+            featured,
             orderby = 'date',
             order = 'desc',
         } = req.query;
 
         // Create cache key from query params
-        const cacheKey = `products:${JSON.stringify({ page, per_page, category, search, pc_category, orderby, order })}`;
+        const cacheKey = `products:${JSON.stringify({ page, per_page, category, search, pc_category, featured, orderby, order })}`;
         
         // Check cache first (only for non-search queries to avoid stale results)
         // IMPORTANT: Don't use cache for category queries that returned 0 results (likely stale/fixed query)
@@ -105,13 +165,23 @@ router.get('/products', async (req, res) => {
             paramIndex++;
         }
 
+        if (featured === 'true') {
+            query += ` AND featured = $${paramIndex}`;
+            params.push(true);
+            paramIndex++;
+        }
+
         // Add ordering
-        const validOrderBy = ['date', 'price', 'name'];
+        const validOrderBy = ['date', 'price', 'name', 'rand'];
         const validOrder = ['asc', 'desc'];
         const orderByColumn = validOrderBy.includes(orderby as string) ? orderby : 'created_at';
         const orderDirection = validOrder.includes((order as string).toLowerCase()) ? order : 'desc';
 
-        query += ` ORDER BY ${orderByColumn === 'date' ? 'created_at' : orderByColumn} ${orderDirection}`;
+        if (orderByColumn === 'rand') {
+            query += ` ORDER BY RANDOM()`;
+        } else {
+            query += ` ORDER BY ${orderByColumn === 'date' ? 'created_at' : orderByColumn} ${orderDirection}`;
+        }
 
         // Add pagination
         const limit = parseInt(per_page as string, 10);
@@ -210,6 +280,13 @@ router.get('/products', async (req, res) => {
         if (search) {
             countQuery += ` AND (name ILIKE $${countParamIndex} OR description ILIKE $${countParamIndex} OR sku ILIKE $${countParamIndex})`;
             countParams.push(`%${search}%`);
+            countParamIndex++;
+        }
+
+        if (featured === 'true') {
+            countQuery += ` AND featured = $${countParamIndex}`;
+            countParams.push(true);
+            countParamIndex++;
         }
 
         const countResult = await pool.query(countQuery, countParams);
@@ -655,6 +732,7 @@ router.get('/woocommerce/products', async (req, res) => {
             search,
             orderby = 'date',
             order = 'desc',
+            featured,
         } = req.query;
 
         const result = await wooCommerceClient.fetchProducts('site1', {
@@ -664,6 +742,7 @@ router.get('/woocommerce/products', async (req, res) => {
             search: search as string,
             orderby: orderby as string,
             order: order as string,
+            featured: featured === 'true',
         });
 
         res.json(result);

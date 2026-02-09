@@ -87,6 +87,7 @@ export class WooCommerceClient {
       orderby?: string;
       order?: string;
       status?: string;
+      featured?: boolean;
     } = {}
   ): Promise<{ products: WooCommerceProduct[]; total: number; totalPages: number }> {
     const client = this.clients.get(siteId);
@@ -102,6 +103,7 @@ export class WooCommerceClient {
       orderby = 'date',
       order = 'desc',
       status = 'publish',
+      featured,
     } = params;
 
     const queryParams: any = {
@@ -118,6 +120,10 @@ export class WooCommerceClient {
 
     if (search) {
       queryParams.search = search;
+    }
+
+    if (featured !== undefined) {
+      queryParams.featured = featured;
     }
 
     try {
