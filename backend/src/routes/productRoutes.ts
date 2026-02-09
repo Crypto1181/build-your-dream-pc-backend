@@ -84,15 +84,15 @@ router.get('/products', async (req, res) => {
                 // We use @> operator which is safe and efficient for both cases
                 query += ` AND (
                     -- Check if it contains an object with this id
-                    categories @> ('[{"id": ' || $${paramIndex} || '}]')::jsonb
+                    categories @> ('[{"id": ' || $${paramIndex}::text || '}]')::jsonb
                     OR
                     -- Check if it contains the integer directly (for simple array format)
-                    categories @> ('[' || $${paramIndex} || ']')::jsonb
+                    categories @> ('[' || $${paramIndex}::text || ']')::jsonb
                     OR
                     -- Fallback string search for robustness (safe for any text)
-                    categories::text LIKE '%"id":' || $${paramIndex} || ',%' OR
-                    categories::text LIKE '%"id":' || $${paramIndex} || '}%' OR
-                    categories::text LIKE '%"id": ' || $${paramIndex} || ',%'
+                    categories::text LIKE '%"id":' || $${paramIndex}::text || ',%' OR
+                    categories::text LIKE '%"id":' || $${paramIndex}::text || '}%' OR
+                    categories::text LIKE '%"id": ' || $${paramIndex}::text || ',%'
                 )`;
                 params.push(categoryId);
                 paramIndex++;
