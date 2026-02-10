@@ -37,29 +37,41 @@ async function runMigrations() {
       }
     }
 
+    // ---------------------------------------------------------
+    // PRE-FLIGHT CHECKS (Before running full schema)
+    // ---------------------------------------------------------
+    // This fixes the issue where schema.sql tries to create an index on a column 
+    // that doesn't exist yet because the table already exists (skipping CREATE TABLE)
+    // but the column is missing (because it's new).
+
+    const checkTable = await client.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = 'categories'
+      );
+    `);
+
+    if (checkTable.rows[0].exists) {
+      // Check if display_order column exists in categories table
+      const checkColumn = await client.query(`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name='categories' AND column_name='display_order'
+      `);
+
+      if (checkColumn.rows.length === 0) {
+        logger.info('Adding missing column: display_order to categories table (Pre-flight)');
+        await client.query(`
+          ALTER TABLE categories ADD COLUMN IF NOT EXISTS display_order INTEGER DEFAULT 0;
+        `);
+      }
+    }
+
     if (schemaPath) {
       const schema = readFileSync(schemaPath, 'utf-8');
       // Execute the entire schema as a single query
       await client.query(schema);
-    }
-
-    // ---------------------------------------------------------
-    // MANUAL MIGRATIONS (for existing tables)
-    // ---------------------------------------------------------
-    
-    // Check if display_order column exists in categories table
-    const checkColumn = await client.query(`
-      SELECT column_name 
-      FROM information_schema.columns 
-      WHERE table_name='categories' AND column_name='display_order'
-    `);
-
-    if (checkColumn.rows.length === 0) {
-      logger.info('Adding missing column: display_order to categories table');
-      await client.query(`
-        ALTER TABLE categories ADD COLUMN IF NOT EXISTS display_order INTEGER DEFAULT 0;
-        CREATE INDEX IF NOT EXISTS idx_categories_display_order ON categories(display_order);
-      `);
     }
 
     logger.info('✅ Database migrations completed successfully');

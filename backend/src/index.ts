@@ -14,8 +14,6 @@ import rateLimit from 'express-rate-limit';
 // Load environment variables
 dotenv.config();
 
-console.log('Starting application initialization...');
-
 // Check for required environment variables
 const hasWooCommerce = (process.env.WOOCOMMERCE_CONSUMER_KEY && process.env.WOOCOMMERCE_CONSUMER_SECRET) || 
                        (process.env.WOOCOMMERCE_SITE1_KEY && process.env.WOOCOMMERCE_SITE1_SECRET);
