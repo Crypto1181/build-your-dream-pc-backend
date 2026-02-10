@@ -12,14 +12,7 @@ export const logger = winston.createLogger({
   ),
   defaultMeta: { service: 'pc-builder-api' },
   transports: [
-    new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
-    new winston.transports.File({ filename: 'logs/combined.log' }),
-  ],
-});
-
-// Add console transport for development
-if (process.env.NODE_ENV !== 'production') {
-  logger.add(
+    // Always log to console in Render/Production so logs are visible in the dashboard
     new winston.transports.Console({
       format: winston.format.combine(
         winston.format.colorize(),
@@ -29,6 +22,10 @@ if (process.env.NODE_ENV !== 'production') {
           }`;
         })
       ),
-    })
-  );
-}
+    }),
+    // File logs (optional, kept for local dev or if persistent storage is used)
+    // new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
+    // new winston.transports.File({ filename: 'logs/combined.log' }),
+  ],
+});
+

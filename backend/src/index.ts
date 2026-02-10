@@ -14,6 +14,8 @@ import rateLimit from 'express-rate-limit';
 // Load environment variables
 dotenv.config();
 
+console.log('Starting application initialization...');
+
 // Check for required environment variables
 const hasWooCommerce = (process.env.WOOCOMMERCE_CONSUMER_KEY && process.env.WOOCOMMERCE_CONSUMER_SECRET) || 
                        (process.env.WOOCOMMERCE_SITE1_KEY && process.env.WOOCOMMERCE_SITE1_SECRET);
@@ -141,6 +143,7 @@ async function startServer() {
       });
     });
   } catch (error) {
+    console.error('CRITICAL ERROR: Failed to start server:', error);
     logger.error('Failed to start server:', error);
     process.exit(1);
   }
