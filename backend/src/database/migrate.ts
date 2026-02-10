@@ -22,15 +22,26 @@ async function runMigrations() {
       const srcPath = join(process.cwd(), 'src', 'database', 'schema.sql');
       if (existsSync(srcPath)) {
         schemaPath = srcPath;
-        logger.info(`Schema file found at: ${schemaPath}`);
+        logger.info(`Schema file found at: ${srcPath}`);
+      } else {
+         // Try one more location: root level database/schema.sql (sometimes useful)
+         const rootPath = join(process.cwd(), 'database', 'schema.sql');
+         if (existsSync(rootPath)) {
+           schemaPath = rootPath;
+         } else {
+           logger.warn(`⚠️ Schema file NOT found at ${schemaPath} or ${srcPath}. Skipping full schema run.`);
+           // We do NOT return here, because we still want to try the manual migrations below
+           // This prevents the app from crashing if schema.sql is missing but the DB is already set up
+           schemaPath = '';
+         }
       }
     }
 
-    const schema = readFileSync(schemaPath, 'utf-8');
-
-    // Execute the entire schema as a single query
-    // This avoids issues with splitting by semicolon which breaks function definitions
-    await client.query(schema);
+    if (schemaPath) {
+      const schema = readFileSync(schemaPath, 'utf-8');
+      // Execute the entire schema as a single query
+      await client.query(schema);
+    }
 
     // ---------------------------------------------------------
     // MANUAL MIGRATIONS (for existing tables)
