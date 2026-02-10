@@ -420,6 +420,53 @@ router.get('/products/:id', async (req, res) => {
 });
 
 /**
+ * PUT /api/categories/reorder
+ * Update category display order
+ */
+router.put('/categories/reorder', async (req, res) => {
+    try {
+        const { categories } = req.body; // Array of { id, display_order }
+        
+        if (!Array.isArray(categories)) {
+            return res.status(400).json({ error: 'Invalid input. Expected array of categories.' });
+        }
+
+        const pool = getDatabasePool();
+        
+        // Use a transaction for safety
+        const client = await pool.connect();
+        try {
+            await client.query('BEGIN');
+            
+            for (const cat of categories) {
+                if (cat.id !== undefined && cat.display_order !== undefined) {
+                    await client.query(
+                        'UPDATE categories SET display_order = $1 WHERE id = $2',
+                        [cat.display_order, cat.id]
+                    );
+                }
+            }
+            
+            await client.query('COMMIT');
+        } catch (e) {
+            await client.query('ROLLBACK');
+            throw e;
+        } finally {
+            client.release();
+        }
+
+        // Clear cache
+        cache.delete('categories:tree');
+        cache.delete('categories:all');
+
+        res.json({ success: true, message: 'Categories reordered successfully' });
+    } catch (error: any) {
+        logger.error('Error reordering categories:', error);
+        res.status(500).json({ error: 'Failed to reorder categories' });
+    }
+});
+
+/**
  * GET /api/categories/tree
  * Fetch categories as a hierarchical tree
  */
@@ -433,7 +480,7 @@ router.get('/categories/tree', async (req, res) => {
         }
 
         const pool = getDatabasePool();
-        const result = await pool.query('SELECT * FROM categories ORDER BY name ASC');
+        const result = await pool.query('SELECT * FROM categories ORDER BY display_order ASC, name ASC');
         const categories = result.rows;
 
         // Build tree
@@ -486,7 +533,7 @@ router.get('/categories', async (req, res) => {
         const pool = getDatabasePool();
 
         const result = await pool.query(
-            'SELECT * FROM categories ORDER BY name ASC'
+            'SELECT * FROM categories ORDER BY display_order ASC, name ASC'
         );
 
         // Cache the result

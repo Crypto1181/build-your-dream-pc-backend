@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS categories (
     parent_id INTEGER REFERENCES categories(id) ON DELETE SET NULL,
     image_url TEXT,
     count INTEGER DEFAULT 0,
+    display_order INTEGER DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -21,6 +22,7 @@ CREATE TABLE IF NOT EXISTS categories (
 CREATE INDEX IF NOT EXISTS idx_categories_slug ON categories(slug);
 CREATE INDEX IF NOT EXISTS idx_categories_parent ON categories(parent_id);
 CREATE INDEX IF NOT EXISTS idx_categories_woo_id ON categories(woo_commerce_id);
+CREATE INDEX IF NOT EXISTS idx_categories_display_order ON categories(display_order);
 
 -- Products table
 CREATE TABLE IF NOT EXISTS products (
