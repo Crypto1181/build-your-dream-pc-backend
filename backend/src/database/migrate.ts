@@ -32,6 +32,25 @@ async function runMigrations() {
     // This avoids issues with splitting by semicolon which breaks function definitions
     await client.query(schema);
 
+    // ---------------------------------------------------------
+    // MANUAL MIGRATIONS (for existing tables)
+    // ---------------------------------------------------------
+    
+    // Check if display_order column exists in categories table
+    const checkColumn = await client.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name='categories' AND column_name='display_order'
+    `);
+
+    if (checkColumn.rows.length === 0) {
+      logger.info('Adding missing column: display_order to categories table');
+      await client.query(`
+        ALTER TABLE categories ADD COLUMN IF NOT EXISTS display_order INTEGER DEFAULT 0;
+        CREATE INDEX IF NOT EXISTS idx_categories_display_order ON categories(display_order);
+      `);
+    }
+
     logger.info('✅ Database migrations completed successfully');
   } catch (error) {
     logger.error('Migration failed:', error);
