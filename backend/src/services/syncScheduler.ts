@@ -3,10 +3,23 @@ import { logger } from '../utils/logger';
 import { wooCommerceClient } from './woocommerceClient';
 import { getDatabasePool } from '../database/connection';
 
+const hasWooCommerce =
+    (process.env.WOOCOMMERCE_CONSUMER_KEY && process.env.WOOCOMMERCE_CONSUMER_SECRET) ||
+    (process.env.WOOCOMMERCE_SITE1_KEY && process.env.WOOCOMMERCE_SITE1_SECRET);
+
 /**
  * Sync products from WooCommerce to PostgreSQL
  */
 export async function syncProducts(): Promise<{ success: boolean; synced: number; errors: number }> {
+    if (!hasWooCommerce) {
+        logger.warn('Skipping product sync: WooCommerce credentials are not configured');
+        return {
+            success: false,
+            synced: 0,
+            errors: 1,
+        };
+    }
+
     logger.info('Starting product sync...');
 
     const pool = getDatabasePool();
@@ -119,6 +132,14 @@ export async function syncProducts(): Promise<{ success: boolean; synced: number
  * Sync categories from WooCommerce to PostgreSQL
  */
 export async function syncCategories(): Promise<{ success: boolean; synced: number }> {
+    if (!hasWooCommerce) {
+        logger.warn('Skipping category sync: WooCommerce credentials are not configured');
+        return {
+            success: false,
+            synced: 0,
+        };
+    }
+
     logger.info('Starting category sync...');
 
     const pool = getDatabasePool();
@@ -179,6 +200,11 @@ export async function syncCategories(): Promise<{ success: boolean; synced: numb
 export function startSyncScheduler(): void {
     const syncSchedule = process.env.SYNC_SCHEDULE || '0 */6 * * *'; // Every 6 hours by default
 
+    if (!hasWooCommerce) {
+        logger.warn('Sync scheduler not started: WooCommerce credentials are not configured');
+        return;
+    }
+
     logger.info(`Scheduling product sync with cron: ${syncSchedule}`);
 
     cron.schedule(syncSchedule, async () => {
@@ -190,6 +216,10 @@ export function startSyncScheduler(): void {
     // Run initial sync on startup if enabled
     if (process.env.SYNC_ON_STARTUP !== 'false') {
         setTimeout(async () => {
+            if (!hasWooCommerce) {
+                logger.warn('Initial sync skipped: WooCommerce credentials are not configured');
+                return;
+            }
             logger.info('🔄 Running initial product sync...');
             await syncProducts();
             await syncCategories();

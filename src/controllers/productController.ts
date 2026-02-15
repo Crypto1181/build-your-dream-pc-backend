@@ -40,6 +40,10 @@ export async function getProducts(req: Request, res: Response): Promise<void> {
     const params: any[] = [];
     let paramIndex = 1;
 
+    conditions.push(`(stock_status IS NULL OR stock_status != $${paramIndex})`);
+    params.push('outofstock');
+    paramIndex++;
+
     if (category) {
       // Filter by category ID - check if categories JSONB array contains the category ID
       // Categories are stored as: [{"id": 123, "name": "Pens", "slug": "pens"}, ...]

@@ -6,6 +6,10 @@ import { cache } from '../utils/cache';
 
 const router = Router();
 
+const hasWooCommerce =
+  (process.env.WOOCOMMERCE_CONSUMER_KEY && process.env.WOOCOMMERCE_CONSUMER_SECRET) ||
+  (process.env.WOOCOMMERCE_SITE1_KEY && process.env.WOOCOMMERCE_SITE1_SECRET);
+
 // Helper function to set cache headers
 const setCacheHeaders = (res: any, maxAge: number = 300) => {
   res.set('Cache-Control', `public, max-age=${maxAge}, stale-while-revalidate=60`);
@@ -18,6 +22,14 @@ const setCacheHeaders = (res: any, maxAge: number = 300) => {
  * This is used when useLive=true in frontend
  */
 router.get('/woocommerce/products', async (req, res) => {
+    if (!hasWooCommerce) {
+        logger.warn('WooCommerce proxy requested but credentials are not configured');
+        return res.status(503).json({
+            error: 'WooCommerce not configured',
+            message: 'Set WOOCOMMERCE_CONSUMER_KEY and WOOCOMMERCE_CONSUMER_SECRET in backend .env file',
+        });
+    }
+
     try {
         const {
             page = '1',
@@ -42,9 +54,11 @@ router.get('/woocommerce/products', async (req, res) => {
             order: order as string,
         });
 
+        const filteredProducts = result.products.filter((p: any) => p.stock_status !== 'outofstock');
+
         // Add woo_commerce_id to match database format expected by frontend
         // The frontend backendApi.ts -> transformBackendProductToWooCommerce expects certain fields
-        const products = result.products.map((p: any) => ({
+        const products = filteredProducts.map((p: any) => ({
             ...p,
             woo_commerce_id: p.id,
             // Ensure images are in the expected format (WooCommerce API returns array of objects, which is what we want)
@@ -58,7 +72,7 @@ router.get('/woocommerce/products', async (req, res) => {
             pagination: {
                 page: parseInt(page as string, 10),
                 per_page: parseInt(per_page as string, 10),
-                total: result.total,
+                total: filteredProducts.length,
                 total_pages: result.totalPages,
             },
         });
@@ -121,6 +135,10 @@ router.get('/products', async (req, res) => {
         let query = 'SELECT * FROM products WHERE status = $1';
         const params: any[] = ['publish'];
         let paramIndex = 2;
+
+        query += ` AND (stock_status IS NULL OR stock_status != $${paramIndex})`;
+        params.push('outofstock');
+        paramIndex++;
 
         // IMPORTANT: If filtering by WooCommerce category ID, don't also filter by pc_component_category
         // The category ID is more specific and reliable - pc_component_category might not be set for all products
@@ -205,38 +223,42 @@ router.get('/products', async (req, res) => {
             
             // If no products found, try fallback: query WooCommerce directly
             if (result.rows.length === 0) {
-                logger.warn(`No products found in database for category ${category}, trying WooCommerce direct...`);
-                try {
-                    const { wooCommerceClient } = await import('../services/woocommerceClient');
-                    const wooCommerceResult = await wooCommerceClient.fetchProducts('site1', {
-                        category: parseInt(category as string, 10),
-                        per_page: limit,
-                        page: parseInt(page as string, 10),
-                        orderby: orderby as string,
-                        order: order as string,
-                    });
-                    
-                    if (wooCommerceResult.products.length > 0) {
-                        logger.info(`Found ${wooCommerceResult.products.length} products from WooCommerce direct for category ${category}`);
-                        // Return WooCommerce products directly (bypass database)
-                        const response = {
-                            products: wooCommerceResult.products.map((p: any) => ({
-                                ...p,
-                                woo_commerce_id: p.id,
-                            })),
-                            pagination: {
-                                page: parseInt(page as string, 10),
-                                per_page: limit,
-                                total: wooCommerceResult.total || wooCommerceResult.products.length,
-                                total_pages: wooCommerceResult.totalPages || 1,
-                            },
-                        };
-                        // Don't cache this fallback result
-                        setCacheHeaders(res, 0); // No cache for fallback
-                        return res.json(response);
+                if (hasWooCommerce) {
+                    logger.warn(`No products found in database for category ${category}, trying WooCommerce direct...`);
+                    try {
+                        const { wooCommerceClient } = await import('../services/woocommerceClient');
+                        const wooCommerceResult = await wooCommerceClient.fetchProducts('site1', {
+                            category: parseInt(category as string, 10),
+                            per_page: limit,
+                            page: parseInt(page as string, 10),
+                            orderby: orderby as string,
+                            order: order as string,
+                        });
+                        
+                        const inStockProducts = wooCommerceResult.products.filter((p: any) => p.stock_status !== 'outofstock');
+
+                        if (inStockProducts.length > 0) {
+                            logger.info(`Found ${inStockProducts.length} in-stock products from WooCommerce direct for category ${category}`);
+                            const response = {
+                                products: inStockProducts.map((p: any) => ({
+                                    ...p,
+                                    woo_commerce_id: p.id,
+                                })),
+                                pagination: {
+                                    page: parseInt(page as string, 10),
+                                    per_page: limit,
+                                    total: inStockProducts.length,
+                                    total_pages: wooCommerceResult.totalPages || 1,
+                                },
+                            };
+                            setCacheHeaders(res, 0);
+                            return res.json(response);
+                        }
+                    } catch (wooError: any) {
+                        logger.error(`WooCommerce fallback failed for category ${category}:`, wooError.message);
                     }
-                } catch (wooError: any) {
-                    logger.error(`WooCommerce fallback failed for category ${category}:`, wooError.message);
+                } else {
+                    logger.warn(`No products found in database for category ${category}, and WooCommerce is not configured`);
                 }
                 
                 // Debug: Check if any products exist with this category in a different format
@@ -250,6 +272,10 @@ router.get('/products', async (req, res) => {
         let countQuery = 'SELECT COUNT(*) FROM products WHERE status = $1';
         const countParams: any[] = ['publish'];
         let countParamIndex = 2;
+
+        countQuery += ` AND (stock_status IS NULL OR stock_status != $${countParamIndex})`;
+        countParams.push('outofstock');
+        countParamIndex++;
 
         // IMPORTANT: If filtering by WooCommerce category ID, don't also filter by pc_component_category
         // Only use pc_component_category filter if NO category ID is provided
@@ -373,29 +399,26 @@ router.get('/products/:id', async (req, res) => {
         );
 
         if (result.rows.length === 0) {
-            // Fallback: Try to fetch from WooCommerce directly
-            // This is needed for "live" products that haven't been synced to the DB yet
-            try {
-                logger.info(`Product ${productId} not found in DB, trying WooCommerce fallback...`);
-                const product = await wooCommerceClient.fetchProductById('site1', productId);
-                
-                if (product) {
-                    const transformedProduct = {
-                        ...product,
-                        woo_commerce_id: product.id,
-                        // Ensure compatibility with frontend expected format
-                        // Database stores images as JSONB, API returns object array
-                        // Need to ensure it matches what DB would return
-                    };
+            if (hasWooCommerce) {
+                try {
+                    logger.info(`Product ${productId} not found in DB, trying WooCommerce fallback...`);
+                    const product = await wooCommerceClient.fetchProductById('site1', productId);
                     
-                    // Cache this fallback result too
-                    cache.set(cacheKey, transformedProduct, 5 * 60 * 1000);
-                    setCacheHeaders(res, 300);
-                    return res.json(transformedProduct);
+                    if (product) {
+                        const transformedProduct = {
+                            ...product,
+                            woo_commerce_id: product.id,
+                        };
+                        
+                        cache.set(cacheKey, transformedProduct, 5 * 60 * 1000);
+                        setCacheHeaders(res, 300);
+                        return res.json(transformedProduct);
+                    }
+                } catch (wooError: any) {
+                    logger.error(`WooCommerce fallback failed for product ${productId}:`, wooError.message);
                 }
-            } catch (wooError: any) {
-                logger.error(`WooCommerce fallback failed for product ${productId}:`, wooError.message);
-                // If both fail, return 404
+            } else {
+                logger.warn(`Product ${productId} not found in DB, and WooCommerce is not configured for fallback`);
             }
 
             return res.status(404).json({
@@ -558,6 +581,14 @@ router.get('/categories', async (req, res) => {
  */
 router.post('/sync/products', async (req, res) => {
     try {
+        if (!hasWooCommerce) {
+            logger.warn('Manual product sync requested but WooCommerce credentials are not configured');
+            return res.status(503).json({
+                error: 'WooCommerce not configured',
+                message: 'Set WOOCOMMERCE_CONSUMER_KEY and WOOCOMMERCE_CONSUMER_SECRET in backend .env file',
+            });
+        }
+
         logger.info('Manual product sync triggered');
 
         // Fetch products from WooCommerce
