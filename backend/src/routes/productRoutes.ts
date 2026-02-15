@@ -53,12 +53,10 @@ router.get('/woocommerce/products', async (req, res) => {
             orderby: orderby as string,
             order: order as string,
         });
-
-        const filteredProducts = result.products.filter((p: any) => p.stock_status !== 'outofstock');
-
+        
         // Add woo_commerce_id to match database format expected by frontend
         // The frontend backendApi.ts -> transformBackendProductToWooCommerce expects certain fields
-        const products = filteredProducts.map((p: any) => ({
+        const products = result.products.map((p: any) => ({
             ...p,
             woo_commerce_id: p.id,
             // Ensure images are in the expected format (WooCommerce API returns array of objects, which is what we want)
@@ -72,7 +70,7 @@ router.get('/woocommerce/products', async (req, res) => {
             pagination: {
                 page: parseInt(page as string, 10),
                 per_page: parseInt(per_page as string, 10),
-                total: filteredProducts.length,
+                total: result.total,
                 total_pages: result.totalPages,
             },
         });
