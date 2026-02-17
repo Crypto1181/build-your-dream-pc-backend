@@ -208,9 +208,13 @@ export function startSyncScheduler(): void {
     logger.info(`Scheduling product sync with cron: ${syncSchedule}`);
 
     cron.schedule(syncSchedule, async () => {
-        logger.info('🔄 Running scheduled product sync...');
-        await syncProducts();
-        await syncCategories();
+        try {
+            logger.info('🔄 Running scheduled product sync...');
+            await syncProducts();
+            await syncCategories();
+        } catch (error: any) {
+            logger.error('⚠️ Scheduled sync failed (non-fatal, server continues):', error.message || error);
+        }
     });
 
     // Run initial sync on startup if enabled
@@ -220,9 +224,13 @@ export function startSyncScheduler(): void {
                 logger.warn('Initial sync skipped: WooCommerce credentials are not configured');
                 return;
             }
-            logger.info('🔄 Running initial product sync...');
-            await syncProducts();
-            await syncCategories();
+            try {
+                logger.info('🔄 Running initial product sync...');
+                await syncProducts();
+                await syncCategories();
+            } catch (error: any) {
+                logger.error('⚠️ Initial sync failed (non-fatal, server continues):', error.message || error);
+            }
         }, 5000); // Wait 5 seconds after startup
     }
 }

@@ -14,6 +14,19 @@ import rateLimit from 'express-rate-limit';
 // Load environment variables
 dotenv.config();
 
+// Prevent unhandled rejections and uncaught exceptions from crashing the server
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error('Unhandled Rejection (non-fatal):', reason);
+});
+
+process.on('uncaughtException', (error) => {
+  logger.error('Uncaught Exception:', error);
+  // Only exit on truly fatal errors, not on network/API timeouts
+  if (error.message?.includes('EADDRINUSE') || error.message?.includes('out of memory')) {
+    process.exit(1);
+  }
+});
+
 // Check for required environment variables
 const hasWooCommerce = (process.env.WOOCOMMERCE_CONSUMER_KEY && process.env.WOOCOMMERCE_CONSUMER_SECRET) ||
   (process.env.WOOCOMMERCE_SITE1_KEY && process.env.WOOCOMMERCE_SITE1_SECRET);
