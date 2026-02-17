@@ -15,8 +15,8 @@ import rateLimit from 'express-rate-limit';
 dotenv.config();
 
 // Check for required environment variables
-const hasWooCommerce = (process.env.WOOCOMMERCE_CONSUMER_KEY && process.env.WOOCOMMERCE_CONSUMER_SECRET) || 
-                       (process.env.WOOCOMMERCE_SITE1_KEY && process.env.WOOCOMMERCE_SITE1_SECRET);
+const hasWooCommerce = (process.env.WOOCOMMERCE_CONSUMER_KEY && process.env.WOOCOMMERCE_CONSUMER_SECRET) ||
+  (process.env.WOOCOMMERCE_SITE1_KEY && process.env.WOOCOMMERCE_SITE1_SECRET);
 
 if (!process.env.DATABASE_URL) {
   logger.warn('⚠️  WARNING: Missing DATABASE_URL environment variable');
@@ -43,9 +43,41 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" },
 }));
 
-// CORS configuration
+// CORS configuration - allow multiple origins
+const allowedOrigins = [
+  'http://localhost:8080',
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'https://techtitan-lb.com',
+  'https://www.techtitan-lb.com',
+  'http://techtitan-lb.com',
+  'http://www.techtitan-lb.com',
+];
+
+// Add CORS_ORIGIN env var if set (can be comma-separated for multiple origins)
+if (process.env.CORS_ORIGIN) {
+  const envOrigins = process.env.CORS_ORIGIN.split(',').map(o => o.trim());
+  envOrigins.forEach(origin => {
+    if (!allowedOrigins.includes(origin)) {
+      allowedOrigins.push(origin);
+    }
+  });
+}
+
 const corsOptions = {
-  origin: process.env.CORS_ORIGIN || 'http://localhost:8080',
+  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+    // Allow requests with no origin (mobile apps, curl, server-to-server)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    // In development, allow all origins
+    if (NODE_ENV === 'development') {
+      return callback(null, true);
+    }
+    logger.warn(`CORS blocked request from origin: ${origin}`);
+    return callback(new Error(`CORS policy: Origin ${origin} not allowed`), false);
+  },
   credentials: true,
   optionsSuccessStatus: 200,
 };
@@ -129,7 +161,7 @@ async function startServer() {
     server.listen(PORT, () => {
       logger.info(`🚀 Server running on port ${PORT}`);
       logger.info(`📡 Environment: ${NODE_ENV}`);
-      logger.info(`🌐 CORS enabled for: ${corsOptions.origin}`);
+      logger.info(`🌐 CORS enabled for: ${allowedOrigins.join(', ')}`);
     });
 
     // Graceful shutdown
