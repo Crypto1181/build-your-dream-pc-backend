@@ -1,0 +1,1505 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TechTitan Admin Panel</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0f1117;
+            --bg-secondary: #1a1d29;
+            --bg-card: #1e2235;
+            --bg-hover: #252a3a;
+            --bg-input: #161926;
+            --border: #2a2f42;
+            --text-primary: #e8eaf0;
+            --text-secondary: #8b92a8;
+            --text-muted: #5c6380;
+            --accent: #6366f1;
+            --accent-hover: #818cf8;
+            --accent-glow: rgba(99, 102, 241, 0.15);
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --info: #3b82f6;
+            --radius: 12px;
+            --radius-sm: 8px;
+            --shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-primary);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 3px;
+        }
+
+        /* Login Page */
+        .login-page {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #0f1117 0%, #1a1d35 100%);
+        }
+
+        .login-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 48px;
+            width: 420px;
+            box-shadow: var(--shadow);
+        }
+
+        .login-card h1 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+
+        .login-card h1 span {
+            color: var(--accent);
+        }
+
+        .login-card p {
+            color: var(--text-secondary);
+            text-align: center;
+            margin-bottom: 32px;
+            font-size: 14px;
+        }
+
+        /* Form Elements */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px 16px;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            font-size: 14px;
+            font-family: inherit;
+            transition: border-color .2s;
+            outline: none;
+        }
+
+        .form-input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+
+        .form-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        textarea.form-input {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        select.form-input {
+            cursor: pointer;
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all .2s;
+            font-family: inherit;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-hover);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px var(--accent-glow);
+        }
+
+        .btn-danger {
+            background: rgba(239, 68, 68, .15);
+            color: var(--danger);
+            border: 1px solid rgba(239, 68, 68, .2);
+        }
+
+        .btn-danger:hover {
+            background: rgba(239, 68, 68, .25);
+        }
+
+        .btn-secondary {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--border);
+        }
+
+        .btn-success {
+            background: rgba(34, 197, 94, .15);
+            color: var(--success);
+            border: 1px solid rgba(34, 197, 94, .2);
+        }
+
+        .btn-success:hover {
+            background: rgba(34, 197, 94, .25);
+        }
+
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        .btn-block {
+            width: 100%;
+            justify-content: center;
+            padding: 14px;
+            font-size: 15px;
+        }
+
+        .btn:disabled {
+            opacity: .5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        /* Layout */
+        .app {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            width: 260px;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border);
+            padding: 24px 0;
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            overflow-y: auto;
+            z-index: 10;
+        }
+
+        .sidebar-logo {
+            padding: 0 24px 24px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 12px;
+        }
+
+        .sidebar-logo h2 {
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .sidebar-logo h2 span {
+            color: var(--accent);
+        }
+
+        .sidebar-logo p {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 24px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all .15s;
+            border-left: 3px solid transparent;
+        }
+
+        .nav-item:hover {
+            color: var(--text-primary);
+            background: var(--bg-hover);
+        }
+
+        .nav-item.active {
+            color: var(--accent);
+            background: var(--accent-glow);
+            border-left-color: var(--accent);
+            font-weight: 500;
+        }
+
+        .nav-item i {
+            width: 20px;
+            text-align: center;
+            font-size: 16px;
+        }
+
+        .nav-separator {
+            height: 1px;
+            background: var(--border);
+            margin: 12px 24px;
+        }
+
+        .main {
+            margin-left: 260px;
+            flex: 1;
+            padding: 32px;
+        }
+
+        .page-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 28px;
+        }
+
+        .page-header h1 {
+            font-size: 26px;
+            font-weight: 700;
+        }
+
+        .page-header .subtitle {
+            color: var(--text-secondary);
+            font-size: 14px;
+            margin-top: 4px;
+        }
+
+        /* Stats Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 24px;
+            transition: transform .2s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+        }
+
+        .stat-card .stat-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            margin-bottom: 16px;
+        }
+
+        .stat-card .stat-icon.purple {
+            background: var(--accent-glow);
+            color: var(--accent);
+        }
+
+        .stat-card .stat-icon.green {
+            background: rgba(34, 197, 94, .12);
+            color: var(--success);
+        }
+
+        .stat-card .stat-icon.red {
+            background: rgba(239, 68, 68, .12);
+            color: var(--danger);
+        }
+
+        .stat-card .stat-icon.blue {
+            background: rgba(59, 130, 246, .12);
+            color: var(--info);
+        }
+
+        .stat-card .stat-icon.amber {
+            background: rgba(245, 158, 11, .12);
+            color: var(--warning);
+        }
+
+        .stat-card .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .stat-card .stat-label {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        /* Table */
+        .table-container {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+        }
+
+        .table-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            flex-wrap: wrap;
+        }
+
+        .table-toolbar .search-input {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            text-align: left;
+            padding: 12px 16px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: .5px;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--border);
+            background: var(--bg-secondary);
+        }
+
+        td {
+            padding: 12px 16px;
+            font-size: 13px;
+            border-bottom: 1px solid var(--border);
+            vertical-align: middle;
+        }
+
+        tr:hover td {
+            background: var(--bg-hover);
+        }
+
+        .product-image {
+            width: 48px;
+            height: 48px;
+            border-radius: var(--radius-sm);
+            object-fit: cover;
+            background: var(--bg-input);
+        }
+
+        .product-name {
+            font-weight: 500;
+            max-width: 250px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        /* Badges */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 3px 10px;
+            font-size: 11px;
+            font-weight: 500;
+            border-radius: 20px;
+        }
+
+        .badge-success {
+            background: rgba(34, 197, 94, .12);
+            color: var(--success);
+        }
+
+        .badge-danger {
+            background: rgba(239, 68, 68, .12);
+            color: var(--danger);
+        }
+
+        .badge-warning {
+            background: rgba(245, 158, 11, .12);
+            color: var(--warning);
+        }
+
+        .badge-info {
+            background: rgba(59, 130, 246, .12);
+            color: var(--info);
+        }
+
+        /* Pagination */
+        .pagination {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px;
+            border-top: 1px solid var(--border);
+        }
+
+        .pagination-info {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .pagination-btns {
+            display: flex;
+            gap: 4px;
+        }
+
+        .page-btn {
+            padding: 6px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: transparent;
+            color: var(--text-primary);
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        .page-btn:hover {
+            background: var(--bg-hover);
+        }
+
+        .page-btn.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: #fff;
+        }
+
+        .page-btn:disabled {
+            opacity: .3;
+            cursor: not-allowed;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, .6);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+
+        .modal {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            width: 90%;
+            max-width: 700px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 24px 48px rgba(0, 0, 0, .4);
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .modal-header h2 {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 20px;
+            padding: 4px;
+        }
+
+        .modal-close:hover {
+            color: var(--text-primary);
+        }
+
+        .modal-body {
+            padding: 24px;
+        }
+
+        .modal-footer {
+            padding: 16px 24px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+
+        /* Progress bar */
+        .progress {
+            width: 100%;
+            height: 8px;
+            background: var(--bg-input);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent), var(--accent-hover));
+            border-radius: 4px;
+            transition: width .3s;
+        }
+
+        /* Import area */
+        .drop-zone {
+            border: 2px dashed var(--border);
+            border-radius: var(--radius);
+            padding: 48px;
+            text-align: center;
+            cursor: pointer;
+            transition: all .2s;
+        }
+
+        .drop-zone:hover {
+            border-color: var(--accent);
+            background: var(--accent-glow);
+        }
+
+        .drop-zone i {
+            font-size: 48px;
+            color: var(--text-muted);
+            margin-bottom: 16px;
+        }
+
+        .drop-zone p {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        /* Image upload */
+        .image-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 12px;
+            margin-top: 12px;
+        }
+
+        .image-item {
+            position: relative;
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+            aspect-ratio: 1;
+            background: var(--bg-input);
+        }
+
+        .image-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .image-item .remove-btn {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            background: rgba(239, 68, 68, .9);
+            color: #fff;
+            border: none;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .image-upload-btn {
+            aspect-ratio: 1;
+            border: 2px dashed var(--border);
+            border-radius: var(--radius-sm);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all .2s;
+            color: var(--text-muted);
+        }
+
+        .image-upload-btn:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        /* Toast */
+        .toast-container {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            z-index: 200;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .toast {
+            padding: 14px 20px;
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            font-weight: 500;
+            animation: slideIn .3s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 280px;
+            box-shadow: var(--shadow);
+        }
+
+        .toast-success {
+            background: #16a34a;
+            color: #fff;
+        }
+
+        .toast-error {
+            background: #dc2626;
+            color: #fff;
+        }
+
+        .toast-info {
+            background: #2563eb;
+            color: #fff;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        /* Checkbox */
+        .checkbox {
+            width: 16px;
+            height: 16px;
+            accent-color: var(--accent);
+            cursor: pointer;
+        }
+
+        /* Responsive */
+        @media(max-width:768px) {
+            .sidebar {
+                display: none;
+            }
+
+            .main {
+                margin-left: 0;
+                padding: 16px;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 48px;
+            color: var(--text-muted);
+        }
+
+        .loading i {
+            font-size: 32px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .two-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        @media(max-width:600px) {
+            .two-col {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app"></div>
+    <div class="toast-container" id="toasts"></div>
+
+    <script>
+        // ==========================================
+        // STATE & CONFIG
+        // ==========================================
+        const API_BASE = window.location.origin + '/api/admin';
+        let state = {
+            token: localStorage.getItem('admin_token') || null,
+            page: 'dashboard',
+            products: [],
+            categories: [],
+            stats: {},
+            pagination: { page: 1, per_page: 25, total: 0, total_pages: 0 },
+            filters: { search: '', status: '', stock_status: '', category: '' },
+            selectedIds: new Set(),
+            editingProduct: null,
+            importProgress: null,
+        };
+
+        // ==========================================
+        // API HELPERS
+        // ==========================================
+        async function api(endpoint, options = {}) {
+            const headers = { 'Content-Type': 'application/json' };
+            if (state.token) headers['Authorization'] = 'Bearer ' + state.token;
+            if (options.body instanceof FormData) { delete headers['Content-Type']; }
+
+            const res = await fetch(API_BASE + endpoint, {
+                headers,
+                ...options,
+                body: options.body instanceof FormData ? options.body : (options.body ? JSON.stringify(options.body) : undefined),
+            });
+
+            const data = await res.json();
+            if (res.status === 401) { state.token = null; localStorage.removeItem('admin_token'); render(); throw new Error('Session expired'); }
+            if (!res.ok) throw new Error(data.error || data.message || 'Request failed');
+            return data;
+        }
+
+        function toast(message, type = 'success') {
+            const el = document.createElement('div');
+            el.className = 'toast toast-' + type;
+            el.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'times-circle' : 'info-circle'}"></i> ${message}`;
+            document.getElementById('toasts').appendChild(el);
+            setTimeout(() => el.remove(), 3500);
+        }
+
+        // ==========================================
+        // LOGIN
+        // ==========================================
+        function renderLogin() {
+            return `
+        <div class="login-page">
+            <div class="login-card">
+                <h1>Tech<span>Titan</span></h1>
+                <p>Admin Panel — Enter your password to continue</p>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" class="form-input" id="login-password" placeholder="Enter admin password" onkeypress="if(event.key==='Enter')doLogin()">
+                </div>
+                <button class="btn btn-primary btn-block" onclick="doLogin()">
+                    <i class="fas fa-sign-in-alt"></i> Sign In
+                </button>
+            </div>
+        </div>`;
+        }
+
+        async function doLogin() {
+            const pw = document.getElementById('login-password').value;
+            try {
+                const data = await api('/login', { method: 'POST', body: { password: pw } });
+                state.token = data.token;
+                localStorage.setItem('admin_token', data.token);
+                toast('Welcome to Admin Panel!');
+                await loadStats();
+                render();
+            } catch (e) { toast(e.message, 'error'); }
+        }
+
+        function doLogout() {
+            state.token = null;
+            localStorage.removeItem('admin_token');
+            render();
+        }
+
+        // ==========================================
+        // DASHBOARD
+        // ==========================================
+        async function loadStats() {
+            try { state.stats = await api('/stats'); } catch (e) { console.error(e); }
+        }
+
+        function renderDashboard() {
+            const s = state.stats;
+            return `
+        <div class="page-header">
+            <div><h1>Dashboard</h1><p class="subtitle">Overview of your product catalog</p></div>
+        </div>
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon purple"><i class="fas fa-box"></i></div>
+                <div class="stat-value">${s.totalProducts || 0}</div>
+                <div class="stat-label">Total Products</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon green"><i class="fas fa-check-circle"></i></div>
+                <div class="stat-value">${s.publishedProducts || 0}</div>
+                <div class="stat-label">Published</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon green"><i class="fas fa-boxes-stacked"></i></div>
+                <div class="stat-value">${s.inStock || 0}</div>
+                <div class="stat-label">In Stock</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon red"><i class="fas fa-box-open"></i></div>
+                <div class="stat-value">${s.outOfStock || 0}</div>
+                <div class="stat-label">Out of Stock</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon amber"><i class="fas fa-star"></i></div>
+                <div class="stat-value">${s.featuredProducts || 0}</div>
+                <div class="stat-label">Featured</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon blue"><i class="fas fa-tags"></i></div>
+                <div class="stat-value">${s.totalCategories || 0}</div>
+                <div class="stat-label">Categories</div>
+            </div>
+        </div>
+        <div class="stats-grid" style="grid-template-columns:1fr 1fr">
+            <div class="stat-card" style="cursor:pointer" onclick="navigate('products')">
+                <h3 style="margin-bottom:8px">Manage Products</h3>
+                <p style="color:var(--text-secondary);font-size:13px">Add, edit, delete products. Manage stock and visibility.</p>
+                <div style="margin-top:16px;color:var(--accent)"><i class="fas fa-arrow-right"></i> Go to Products</div>
+            </div>
+            <div class="stat-card" style="cursor:pointer" onclick="navigate('import')">
+                <h3 style="margin-bottom:8px">Import Products</h3>
+                <p style="color:var(--text-secondary);font-size:13px">Upload WooCommerce CSV to import all products at once.</p>
+                <div style="margin-top:16px;color:var(--accent)"><i class="fas fa-arrow-right"></i> Go to Import</div>
+            </div>
+        </div>`;
+        }
+
+        // ==========================================
+        // PRODUCTS LIST
+        // ==========================================
+        async function loadProducts() {
+            try {
+                const p = state.pagination;
+                const f = state.filters;
+                let url = `/products?page=${p.page}&per_page=${p.per_page}`;
+                if (f.search) url += `&search=${encodeURIComponent(f.search)}`;
+                if (f.status) url += `&status=${f.status}`;
+                if (f.stock_status) url += `&stock_status=${f.stock_status}`;
+                const data = await api(url);
+                state.products = data.products;
+                state.pagination = data.pagination;
+                state.selectedIds.clear();
+            } catch (e) { toast(e.message, 'error'); }
+        }
+
+        function renderProducts() {
+            const products = state.products;
+            const p = state.pagination;
+            const selCount = state.selectedIds.size;
+
+            return `
+        <div class="page-header">
+            <div><h1>Products</h1><p class="subtitle">${p.total} products total</p></div>
+            <button class="btn btn-primary" onclick="openProductEditor()"><i class="fas fa-plus"></i> Add Product</button>
+        </div>
+        <div class="table-container">
+            <div class="table-toolbar">
+                <input type="text" class="form-input search-input" placeholder="Search products..." value="${state.filters.search}" oninput="debounceSearch(this.value)">
+                <select class="form-input" style="width:140px" onchange="state.filters.status=this.value;state.pagination.page=1;loadProducts().then(render)">
+                    <option value="">All Status</option>
+                    <option value="publish" ${state.filters.status === 'publish' ? 'selected' : ''}>Published</option>
+                    <option value="draft" ${state.filters.status === 'draft' ? 'selected' : ''}>Draft</option>
+                </select>
+                <select class="form-input" style="width:140px" onchange="state.filters.stock_status=this.value;state.pagination.page=1;loadProducts().then(render)">
+                    <option value="">All Stock</option>
+                    <option value="instock" ${state.filters.stock_status === 'instock' ? 'selected' : ''}>In Stock</option>
+                    <option value="outofstock" ${state.filters.stock_status === 'outofstock' ? 'selected' : ''}>Out of Stock</option>
+                </select>
+                ${selCount > 0 ? `
+                <div style="display:flex;gap:8px;margin-left:auto">
+                    <span style="color:var(--text-secondary);font-size:13px;align-self:center">${selCount} selected</span>
+                    <button class="btn btn-danger btn-sm" onclick="bulkAction('delete')"><i class="fas fa-trash"></i> Delete</button>
+                    <button class="btn btn-success btn-sm" onclick="bulkAction('publish')"><i class="fas fa-eye"></i> Publish</button>
+                    <button class="btn btn-secondary btn-sm" onclick="bulkAction('draft')"><i class="fas fa-eye-slash"></i> Draft</button>
+                </div>` : ''}
+            </div>
+            <div style="overflow-x:auto">
+            <table>
+                <thead>
+                    <tr>
+                        <th><input type="checkbox" class="checkbox" onchange="toggleAllProducts(this.checked)"></th>
+                        <th>Image</th>
+                        <th>Name</th>
+                        <th>SKU</th>
+                        <th>Price</th>
+                        <th>Stock</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${products.length === 0 ? '<tr><td colspan="8" style="text-align:center;padding:48px;color:var(--text-muted)">No products found</td></tr>' : ''}
+                    ${products.map(prod => {
+                const img = getProductImage(prod);
+                const checked = state.selectedIds.has(prod.id) ? 'checked' : '';
+                return `<tr>
+                            <td><input type="checkbox" class="checkbox" ${checked} onchange="toggleProduct(${prod.id},this.checked)"></td>
+                            <td><img class="product-image" src="${img}" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 40 40%22><rect fill=%22%23252a3a%22 width=%2240%22 height=%2240%22/><text fill=%22%235c6380%22 font-size=%2212%22 x=%2250%25%22 y=%2255%25%22 text-anchor=%22middle%22>?</text></svg>'"></td>
+                            <td><div class="product-name">${esc(prod.name)}</div></td>
+                            <td style="color:var(--text-muted)">${esc(prod.sku || '—')}</td>
+                            <td style="font-weight:600">${prod.price ? '$' + Number(prod.price).toFixed(2) : '—'}</td>
+                            <td><span class="badge ${prod.stock_status === 'instock' ? 'badge-success' : 'badge-danger'}">${prod.stock_status === 'instock' ? 'In Stock' : 'Out of Stock'}</span></td>
+                            <td><span class="badge ${prod.status === 'publish' ? 'badge-success' : 'badge-warning'}">${prod.status === 'publish' ? 'Published' : 'Draft'}</span></td>
+                            <td>
+                                <button class="btn btn-secondary btn-sm" onclick="openProductEditor(${prod.id})" title="Edit"><i class="fas fa-pen"></i></button>
+                                <button class="btn btn-danger btn-sm" onclick="deleteProduct(${prod.id})" title="Delete"><i class="fas fa-trash"></i></button>
+                            </td>
+                        </tr>`;
+            }).join('')}
+                </tbody>
+            </table>
+            </div>
+            <div class="pagination">
+                <div class="pagination-info">Showing ${(p.page - 1) * p.per_page + 1}–${Math.min(p.page * p.per_page, p.total)} of ${p.total}</div>
+                <div class="pagination-btns">
+                    <button class="page-btn" ${p.page <= 1 ? 'disabled' : ''} onclick="goPage(${p.page - 1})"><i class="fas fa-chevron-left"></i></button>
+                    ${renderPageButtons(p)}
+                    <button class="page-btn" ${p.page >= p.total_pages ? 'disabled' : ''} onclick="goPage(${p.page + 1})"><i class="fas fa-chevron-right"></i></button>
+                </div>
+            </div>
+        </div>`;
+        }
+
+        function renderPageButtons(p) {
+            let btns = [];
+            const start = Math.max(1, p.page - 2);
+            const end = Math.min(p.total_pages, p.page + 2);
+            for (let i = start; i <= end; i++) {
+                btns.push(`<button class="page-btn ${i === p.page ? 'active' : ''}" onclick="goPage(${i})">${i}</button>`);
+            }
+            return btns.join('');
+        }
+
+        function getProductImage(prod) {
+            try {
+                let imgs = prod.images;
+                if (typeof imgs === 'string') imgs = JSON.parse(imgs);
+                if (Array.isArray(imgs) && imgs.length > 0) return imgs[0].src || imgs[0];
+            } catch (e) { }
+            return 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 40 40%22><rect fill=%22%23252a3a%22 width=%2240%22 height=%2240%22/></svg>';
+        }
+
+        function esc(str) { if (!str) return ''; const d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
+
+        let searchTimer;
+        function debounceSearch(val) {
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(() => { state.filters.search = val; state.pagination.page = 1; loadProducts().then(render); }, 400);
+        }
+
+        function toggleProduct(id, checked) { checked ? state.selectedIds.add(id) : state.selectedIds.delete(id); render(); }
+        function toggleAllProducts(checked) { state.products.forEach(p => checked ? state.selectedIds.add(p.id) : state.selectedIds.delete(p.id)); render(); }
+
+        async function goPage(n) { state.pagination.page = n; await loadProducts(); render(); }
+
+        async function deleteProduct(id) {
+            if (!confirm('Delete this product?')) return;
+            try { await api('/products/' + id, { method: 'DELETE' }); toast('Product deleted'); await loadProducts(); render(); } catch (e) { toast(e.message, 'error'); }
+        }
+
+        async function bulkAction(action) {
+            const ids = [...state.selectedIds];
+            if (action === 'delete' && !confirm(`Delete ${ids.length} products?`)) return;
+            try { await api('/products/bulk-action', { method: 'POST', body: { ids, action } }); toast(`${ids.length} products updated`); await loadProducts(); render(); } catch (e) { toast(e.message, 'error'); }
+        }
+
+        // ==========================================
+        // PRODUCT EDITOR MODAL
+        // ==========================================
+        async function openProductEditor(id) {
+            if (id) {
+                try { state.editingProduct = await api('/products/' + id); } catch (e) { toast(e.message, 'error'); return; }
+            } else {
+                state.editingProduct = { name: '', type: 'simple', status: 'publish', featured: false, catalog_visibility: 'visible', description: '', short_description: '', sku: '', price: '', regular_price: '', sale_price: '', stock_status: 'instock', stock_quantity: '', weight: '', images: [], categories: [], tags: [], attributes: [] };
+            }
+            renderProductModal();
+        }
+
+        function renderProductModal() {
+            const p = state.editingProduct;
+            if (!p) return;
+            const isEdit = !!p.id;
+            let imgs = p.images;
+            if (typeof imgs === 'string') try { imgs = JSON.parse(imgs); } catch (e) { imgs = []; }
+            if (!Array.isArray(imgs)) imgs = [];
+
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay';
+            modal.id = 'product-modal';
+            modal.innerHTML = `
+        <div class="modal">
+            <div class="modal-header">
+                <h2>${isEdit ? 'Edit Product' : 'New Product'}</h2>
+                <button class="modal-close" onclick="closeModal()"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Product Name *</label>
+                    <input type="text" class="form-input" id="ed-name" value="${esc(p.name)}" placeholder="Enter product name">
+                </div>
+                <div class="two-col">
+                    <div class="form-group">
+                        <label>Regular Price ($)</label>
+                        <input type="number" step="0.01" class="form-input" id="ed-regular_price" value="${p.regular_price || ''}" placeholder="0.00">
+                    </div>
+                    <div class="form-group">
+                        <label>Sale Price ($)</label>
+                        <input type="number" step="0.01" class="form-input" id="ed-sale_price" value="${p.sale_price || ''}" placeholder="0.00">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Short Description</label>
+                    <textarea class="form-input" id="ed-short_description" rows="2" placeholder="Brief product summary">${esc(p.short_description || '')}</textarea>
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea class="form-input" id="ed-description" rows="4" placeholder="Full product description (HTML supported)">${esc(p.description || '')}</textarea>
+                </div>
+                <div class="two-col">
+                    <div class="form-group">
+                        <label>SKU</label>
+                        <input type="text" class="form-input" id="ed-sku" value="${esc(p.sku || '')}" placeholder="Product SKU">
+                    </div>
+                    <div class="form-group">
+                        <label>Weight (kg)</label>
+                        <input type="text" class="form-input" id="ed-weight" value="${esc(p.weight || '')}" placeholder="0.0">
+                    </div>
+                </div>
+                <div class="two-col">
+                    <div class="form-group">
+                        <label>Status</label>
+                        <select class="form-input" id="ed-status">
+                            <option value="publish" ${p.status === 'publish' ? 'selected' : ''}>Published</option>
+                            <option value="draft" ${p.status === 'draft' ? 'selected' : ''}>Draft</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Stock Status</label>
+                        <select class="form-input" id="ed-stock_status">
+                            <option value="instock" ${p.stock_status === 'instock' ? 'selected' : ''}>In Stock</option>
+                            <option value="outofstock" ${p.stock_status === 'outofstock' ? 'selected' : ''}>Out of Stock</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="two-col">
+                    <div class="form-group">
+                        <label>Stock Quantity</label>
+                        <input type="number" class="form-input" id="ed-stock_quantity" value="${p.stock_quantity || ''}" placeholder="Leave empty for unlimited">
+                    </div>
+                    <div class="form-group">
+                        <label>Type</label>
+                        <select class="form-input" id="ed-type">
+                            <option value="simple" ${p.type === 'simple' ? 'selected' : ''}>Simple</option>
+                            <option value="variable" ${p.type === 'variable' ? 'selected' : ''}>Variable</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label style="display:flex;align-items:center;gap:8px">
+                        <input type="checkbox" class="checkbox" id="ed-featured" ${p.featured ? 'checked' : ''}>
+                        Featured Product
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label>Product Images</label>
+                    <div class="image-grid" id="ed-images">
+                        ${imgs.map((img, i) => `
+                            <div class="image-item">
+                                <img src="${img.src || img}" onerror="this.parentElement.remove()">
+                                <button class="remove-btn" onclick="removeEditorImage(${i})"><i class="fas fa-times"></i></button>
+                            </div>
+                        `).join('')}
+                        <div class="image-upload-btn" onclick="document.getElementById('image-upload-input').click()">
+                            <i class="fas fa-plus" style="font-size:24px"></i>
+                            <span style="font-size:11px;margin-top:4px">Upload</span>
+                        </div>
+                        <div class="image-upload-btn" onclick="addImageUrl()">
+                            <i class="fas fa-link" style="font-size:24px"></i>
+                            <span style="font-size:11px;margin-top:4px">URL</span>
+                        </div>
+                    </div>
+                    <input type="file" id="image-upload-input" accept="image/*" multiple style="display:none" onchange="uploadEditorImages(this.files)">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-primary" id="save-product-btn" onclick="saveProduct()">
+                    <i class="fas fa-save"></i> ${isEdit ? 'Update' : 'Create'} Product
+                </button>
+            </div>
+        </div>`;
+            document.body.appendChild(modal);
+        }
+
+        function closeModal() { const m = document.getElementById('product-modal'); if (m) m.remove(); state.editingProduct = null; }
+
+        function removeEditorImage(index) {
+            let imgs = state.editingProduct.images;
+            if (typeof imgs === 'string') try { imgs = JSON.parse(imgs); } catch (e) { imgs = []; }
+            imgs.splice(index, 1);
+            state.editingProduct.images = imgs;
+            closeModal(); renderProductModal();
+        }
+
+        function addImageUrl() {
+            const url = prompt('Enter image URL:');
+            if (!url) return;
+            let imgs = state.editingProduct.images;
+            if (typeof imgs === 'string') try { imgs = JSON.parse(imgs); } catch (e) { imgs = []; }
+            if (!Array.isArray(imgs)) imgs = [];
+            imgs.push({ src: url, name: url.split('/').pop(), alt: state.editingProduct.name });
+            state.editingProduct.images = imgs;
+            closeModal(); renderProductModal();
+        }
+
+        async function uploadEditorImages(files) {
+            for (const file of files) {
+                const formData = new FormData();
+                formData.append('image', file);
+                try {
+                    const result = await api('/upload/image', { method: 'POST', body: formData });
+                    let imgs = state.editingProduct.images;
+                    if (typeof imgs === 'string') try { imgs = JSON.parse(imgs); } catch (e) { imgs = []; }
+                    if (!Array.isArray(imgs)) imgs = [];
+                    imgs.push(result.image);
+                    state.editingProduct.images = imgs;
+                    toast('Image uploaded!');
+                } catch (e) { toast('Image upload failed: ' + e.message, 'error'); }
+            }
+            closeModal(); renderProductModal();
+        }
+
+        async function saveProduct() {
+            const btn = document.getElementById('save-product-btn');
+            btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+
+            const data = {
+                name: document.getElementById('ed-name').value,
+                regular_price: parseFloat(document.getElementById('ed-regular_price').value) || null,
+                sale_price: parseFloat(document.getElementById('ed-sale_price').value) || null,
+                price: parseFloat(document.getElementById('ed-sale_price').value) || parseFloat(document.getElementById('ed-regular_price').value) || null,
+                short_description: document.getElementById('ed-short_description').value,
+                description: document.getElementById('ed-description').value,
+                sku: document.getElementById('ed-sku').value || null,
+                weight: document.getElementById('ed-weight').value || null,
+                status: document.getElementById('ed-status').value,
+                stock_status: document.getElementById('ed-stock_status').value,
+                stock_quantity: parseInt(document.getElementById('ed-stock_quantity').value) || null,
+                type: document.getElementById('ed-type').value,
+                featured: document.getElementById('ed-featured').checked,
+                on_sale: !!document.getElementById('ed-sale_price').value,
+                images: state.editingProduct.images,
+                categories: state.editingProduct.categories,
+                tags: state.editingProduct.tags,
+                attributes: state.editingProduct.attributes,
+            };
+
+            if (!data.name) { toast('Product name is required', 'error'); btn.disabled = false; btn.innerHTML = '<i class="fas fa-save"></i> Save'; return; }
+
+            try {
+                if (state.editingProduct.id) {
+                    await api('/products/' + state.editingProduct.id, { method: 'PUT', body: data });
+                    toast('Product updated!');
+                } else {
+                    await api('/products', { method: 'POST', body: data });
+                    toast('Product created!');
+                }
+                closeModal();
+                await loadProducts();
+                render();
+            } catch (e) { toast(e.message, 'error'); btn.disabled = false; btn.innerHTML = '<i class="fas fa-save"></i> Save'; }
+        }
+
+        // ==========================================
+        // CSV IMPORT
+        // ==========================================
+        function renderImport() {
+            const prog = state.importProgress;
+            return `
+        <div class="page-header">
+            <div><h1>Import Products</h1><p class="subtitle">Upload WooCommerce CSV export to import all products</p></div>
+        </div>
+        <div class="table-container" style="padding:32px">
+            ${prog && prog.running ? `
+                <div style="text-align:center">
+                    <i class="fas fa-spinner fa-spin" style="font-size:36px;color:var(--accent);margin-bottom:16px"></i>
+                    <h3>Importing Products...</h3>
+                    <p style="color:var(--text-secondary);margin:8px 0">Processed ${prog.processed} of ${prog.total} (${prog.errors} errors)</p>
+                    <div class="progress" style="margin-top:16px;max-width:400px;margin-inline:auto">
+                        <div class="progress-bar" style="width:${prog.total ? Math.round(prog.processed / prog.total * 100) : 0}%"></div>
+                    </div>
+                </div>
+            ` : prog && prog.status === 'completed' ? `
+                <div style="text-align:center">
+                    <i class="fas fa-check-circle" style="font-size:48px;color:var(--success);margin-bottom:16px"></i>
+                    <h3>Import Complete!</h3>
+                    <p style="color:var(--text-secondary);margin:8px 0">${prog.processed} products processed, ${prog.errors} errors</p>
+                    <button class="btn btn-primary" style="margin-top:16px" onclick="state.importProgress=null;render()">Import Another</button>
+                </div>
+            ` : `
+                <div class="drop-zone" id="drop-zone" onclick="document.getElementById('csv-input').click()" 
+                    ondragover="event.preventDefault();this.style.borderColor='var(--accent)'" 
+                    ondragleave="this.style.borderColor='var(--border)'"
+                    ondrop="event.preventDefault();this.style.borderColor='var(--border)';handleCSVDrop(event)">
+                    <i class="fas fa-file-csv"></i>
+                    <h3 style="margin-bottom:8px">Drop your CSV file here</h3>
+                    <p>or click to browse — supports WooCommerce product export format</p>
+                </div>
+                <input type="file" id="csv-input" accept=".csv" style="display:none" onchange="uploadCSV(this.files[0])">
+                <div style="margin-top:24px;padding:20px;background:var(--bg-secondary);border-radius:var(--radius-sm)">
+                    <h4 style="margin-bottom:8px"><i class="fas fa-info-circle" style="color:var(--info)"></i> How to export from WooCommerce</h4>
+                    <ol style="color:var(--text-secondary);font-size:13px;padding-left:20px;line-height:1.8">
+                        <li>Go to WordPress Admin → Products</li>
+                        <li>Click "Export" button at the top</li>
+                        <li>Select "All" products and click "Generate CSV"</li>
+                        <li>Upload the downloaded CSV file here</li>
+                    </ol>
+                </div>
+            `}
+        </div>`;
+        }
+
+        function handleCSVDrop(e) { if (e.dataTransfer.files.length) uploadCSV(e.dataTransfer.files[0]); }
+
+        async function uploadCSV(file) {
+            if (!file) return;
+            if (!file.name.endsWith('.csv')) { toast('Please upload a CSV file', 'error'); return; }
+
+            const formData = new FormData();
+            formData.append('csv', file);
+
+            try {
+                await api('/import/csv', { method: 'POST', body: formData });
+                toast('Import started!', 'info');
+                pollImportStatus();
+            } catch (e) { toast(e.message, 'error'); }
+        }
+
+        async function pollImportStatus() {
+            const poll = async () => {
+                try {
+                    state.importProgress = await api('/import/status');
+                    render();
+                    if (state.importProgress.running) setTimeout(poll, 1500);
+                    else { await loadStats(); toast('Import finished!'); }
+                } catch (e) { console.error(e); }
+            };
+            poll();
+        }
+
+        // ==========================================
+        // CATEGORIES
+        // ==========================================
+        async function loadCategories() {
+            try { state.categories = await api('/categories'); } catch (e) { toast(e.message, 'error'); }
+        }
+
+        function renderCategories() {
+            const cats = state.categories;
+            return `
+        <div class="page-header">
+            <div><h1>Categories</h1><p class="subtitle">${cats.length} categories</p></div>
+            <button class="btn btn-primary" onclick="openCategoryEditor()"><i class="fas fa-plus"></i> Add Category</button>
+        </div>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr><th>ID</th><th>Name</th><th>Slug</th><th>Parent</th><th>Products</th><th>Actions</th></tr>
+                </thead>
+                <tbody>
+                    ${cats.length === 0 ? '<tr><td colspan="6" style="text-align:center;padding:48px;color:var(--text-muted)">No categories</td></tr>' : ''}
+                    ${cats.map(cat => `<tr>
+                        <td>${cat.id}</td>
+                        <td style="font-weight:500">${esc(cat.name)}</td>
+                        <td style="color:var(--text-muted)">${esc(cat.slug)}</td>
+                        <td>${cat.parent_id ? cats.find(c => c.id === cat.parent_id)?.name || cat.parent_id : '—'}</td>
+                        <td>${cat.count || 0}</td>
+                        <td>
+                            <button class="btn btn-secondary btn-sm" onclick="openCategoryEditor(${cat.id})"><i class="fas fa-pen"></i></button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteCategory(${cat.id})"><i class="fas fa-trash"></i></button>
+                        </td>
+                    </tr>`).join('')}
+                </tbody>
+            </table>
+        </div>`;
+        }
+
+        function openCategoryEditor(id) {
+            const cat = id ? state.categories.find(c => c.id === id) : { name: '', slug: '', description: '', parent_id: null };
+            const isEdit = !!id;
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay';
+            modal.id = 'product-modal';
+            modal.innerHTML = `
+        <div class="modal" style="max-width:500px">
+            <div class="modal-header">
+                <h2>${isEdit ? 'Edit' : 'New'} Category</h2>
+                <button class="modal-close" onclick="closeModal()"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group"><label>Name *</label><input type="text" class="form-input" id="cat-name" value="${esc(cat.name)}"></div>
+                <div class="form-group"><label>Slug</label><input type="text" class="form-input" id="cat-slug" value="${esc(cat.slug)}" placeholder="auto-generated from name"></div>
+                <div class="form-group"><label>Description</label><textarea class="form-input" id="cat-desc" rows="2">${esc(cat.description || '')}</textarea></div>
+                <div class="form-group">
+                    <label>Parent Category</label>
+                    <select class="form-input" id="cat-parent">
+                        <option value="">None (Top Level)</option>
+                        ${state.categories.filter(c => c.id !== id).map(c => `<option value="${c.id}" ${cat.parent_id === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="saveCategory(${id || 'null'})"><i class="fas fa-save"></i> Save</button>
+            </div>
+        </div>`;
+            document.body.appendChild(modal);
+        }
+
+        async function saveCategory(id) {
+            const data = {
+                name: document.getElementById('cat-name').value,
+                slug: document.getElementById('cat-slug').value || undefined,
+                description: document.getElementById('cat-desc').value,
+                parent_id: document.getElementById('cat-parent').value || null,
+            };
+            if (!data.name) { toast('Name is required', 'error'); return; }
+            try {
+                if (id) await api('/categories/' + id, { method: 'PUT', body: data });
+                else await api('/categories', { method: 'POST', body: data });
+                toast(id ? 'Category updated!' : 'Category created!');
+                closeModal(); await loadCategories(); render();
+            } catch (e) { toast(e.message, 'error'); }
+        }
+
+        async function deleteCategory(id) {
+            if (!confirm('Delete this category?')) return;
+            try { await api('/categories/' + id, { method: 'DELETE' }); toast('Category deleted'); await loadCategories(); render(); } catch (e) { toast(e.message, 'error'); }
+        }
+
+        // ==========================================
+        // NAVIGATION & RENDER
+        // ==========================================
+        async function navigate(page) {
+            state.page = page;
+            state.pagination.page = 1;
+            state.filters = { search: '', status: '', stock_status: '', category: '' };
+
+            if (page === 'dashboard') await loadStats();
+            if (page === 'products') await loadProducts();
+            if (page === 'categories') await loadCategories();
+            if (page === 'import') { } // No preload needed
+
+            render();
+        }
+
+        function render() {
+            const app = document.getElementById('app');
+            if (!state.token) { app.innerHTML = renderLogin(); return; }
+
+            const pages = {
+                dashboard: renderDashboard,
+                products: renderProducts,
+                categories: renderCategories,
+                import: renderImport,
+            };
+
+            app.innerHTML = `
+        <div class="app">
+            <nav class="sidebar">
+                <div class="sidebar-logo">
+                    <h2>Tech<span>Titan</span></h2>
+                    <p>Admin Panel</p>
+                </div>
+                <div class="nav-item ${state.page === 'dashboard' ? 'active' : ''}" onclick="navigate('dashboard')"><i class="fas fa-chart-pie"></i> Dashboard</div>
+                <div class="nav-item ${state.page === 'products' ? 'active' : ''}" onclick="navigate('products')"><i class="fas fa-box"></i> Products</div>
+                <div class="nav-item ${state.page === 'categories' ? 'active' : ''}" onclick="navigate('categories')"><i class="fas fa-tags"></i> Categories</div>
+                <div class="nav-separator"></div>
+                <div class="nav-item ${state.page === 'import' ? 'active' : ''}" onclick="navigate('import')"><i class="fas fa-file-import"></i> CSV Import</div>
+                <div class="nav-separator"></div>
+                <div class="nav-item" onclick="doLogout()"><i class="fas fa-sign-out-alt"></i> Logout</div>
+            </nav>
+            <main class="main">${(pages[state.page] || renderDashboard)()}</main>
+        </div>`;
+        }
+
+        // Initial render
+        if (state.token) { loadStats().then(() => { loadProducts(); render(); }); }
+        else { render(); }
+    </script>
+</body>
+
+</html>

@@ -49,6 +49,12 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrcAttr: ["'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://cdnjs.cloudflare.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com", "https://cdnjs.cloudflare.com"],
+      imgSrc: ["'self'", "data:", "https:", "http:"],
+      connectSrc: ["'self'", "https://api.cloudinary.com", "https://res.cloudinary.com"],
       // Allow the frontend to frame this API (needed for the PDF proxy)
       frameAncestors: ["'self'", process.env.CORS_ORIGIN || "*", "https://techtitan-lb.com", "http://localhost:8080"],
     },
