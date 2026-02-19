@@ -144,7 +144,8 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
   logger.error('Unhandled error:', err);
   res.status(500).json({
     error: 'Internal server error',
-    message: NODE_ENV === 'development' ? err.message : 'Something went wrong',
+    message: err.message, // Temporarily show message in prod
+    stack: err.stack,     // Temporarily show stack in prod
   });
 });
 
