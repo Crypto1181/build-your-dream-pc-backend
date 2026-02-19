@@ -46,31 +46,40 @@ export function requireAdmin(req: AuthRequest, res: Response, next: NextFunction
  * Login handler - validates password and returns JWT
  */
 export function loginHandler(req: Request, res: Response): void {
-    const { password } = req.body;
-    const adminPassword = getAdminPassword();
+    try {
+        const { password } = req.body;
+        const adminPassword = getAdminPassword();
 
-    if (!password) {
-        res.status(400).json({ error: 'Password is required' });
-        return;
+        if (!password) {
+            res.status(400).json({ error: 'Password is required' });
+            return;
+        }
+
+        // Use String() to handle type differences (number vs string)
+        if (String(password).trim() !== String(adminPassword).trim()) {
+            logger.warn('Failed admin login attempt');
+            res.status(401).json({ error: 'Invalid password' });
+            return;
+        }
+
+        const token = jwt.sign(
+            { role: 'admin', loginTime: Date.now() },
+            getJwtSecret(),
+            { expiresIn: '24h' }
+        );
+
+        logger.info('Admin logged in successfully');
+        res.json({
+            success: true,
+            token,
+            expiresIn: '24h',
+        });
+    } catch (error: any) {
+        logger.error('Login error:', error);
+        res.status(500).json({
+            error: 'Internal Server Error',
+            details: error.message,
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        });
     }
-
-    // Use String() to handle type differences (number vs string)
-    if (String(password).trim() !== String(adminPassword).trim()) {
-        logger.warn('Failed admin login attempt');
-        res.status(401).json({ error: 'Invalid password' });
-        return;
-    }
-
-    const token = jwt.sign(
-        { role: 'admin', loginTime: Date.now() },
-        getJwtSecret(),
-        { expiresIn: '24h' }
-    );
-
-    logger.info('Admin logged in successfully');
-    res.json({
-        success: true,
-        token,
-        expiresIn: '24h',
-    });
 }
