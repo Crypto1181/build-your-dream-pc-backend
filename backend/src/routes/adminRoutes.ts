@@ -11,6 +11,19 @@ import { cache } from '../utils/cache';
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } }); // 50MB max
 
+// Strip null bytes and control chars that PostgreSQL rejects
+function sanitizeText(val: any): string {
+    if (val == null) return '';
+    return String(val)
+        .replace(/\x00/g, '')           // null bytes
+        .replace(/[\x01-\x08\x0B\x0C\x0E-\x1F\x7F]/g, ''); // other control chars
+}
+
+function makeSlug(name: string): string {
+    const slug = sanitizeText(name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    return slug || 'product'; // Ensure slug is never empty
+}
+
 // ==========================================
 // AUTH
 // ==========================================
@@ -516,15 +529,15 @@ router.post('/import/csv', requireAdmin, upload.single('csv'), async (req: AuthR
                             synced_at = NOW()`,
                         [
                             wooId,
-                            record['Name'] || 'Untitled',
-                            (record['Name'] || 'untitled').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
-                            record['Type'] || 'simple',
+                            sanitizeText(record['Name']) || 'Untitled',
+                            makeSlug(record['Name'] || 'product'),
+                            sanitizeText(record['Type']) || 'simple',
                             record['Published'] === '1' ? 'publish' : 'draft',
                             record['Is featured?'] === '1',
-                            record['Visibility in catalog'] || 'visible',
-                            record['Description'] || '',
-                            record['Short description'] || '',
-                            record['SKU'] || null,
+                            sanitizeText(record['Visibility in catalog']) || 'visible',
+                            sanitizeText(record['Description']),
+                            sanitizeText(record['Short description']),
+                            sanitizeText(record['SKU']) || null,
                             price,
                             regularPrice,
                             salePrice,
@@ -532,7 +545,7 @@ router.post('/import/csv', requireAdmin, upload.single('csv'), async (req: AuthR
                             record['In stock?'] === '1' ? 'instock' : 'outofstock',
                             parseInt(record['Stock']) || null,
                             record['Stock'] ? true : false,
-                            record['Weight (kg)'] || null,
+                            sanitizeText(record['Weight (kg)']) || null,
                             JSON.stringify(imagesJson),
                             JSON.stringify(attributesJson),
                             JSON.stringify(categoriesJson),
@@ -546,7 +559,7 @@ router.post('/import/csv', requireAdmin, upload.single('csv'), async (req: AuthR
                 } catch (recordError: any) {
                     importProgress.processed++;
                     importProgress.errors++;
-                    logger.error(`CSV import error on record: ${recordError.message}`);
+                    logger.error(`CSV import error [ID=${record['ID']}]: code=${recordError.code} msg=${recordError.message}`);
                 }
             }
         }
