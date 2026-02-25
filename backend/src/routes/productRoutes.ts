@@ -155,9 +155,10 @@ router.get('/products', async (req, res) => {
             const categoryId = parseInt(category as string, 10);
             if (!isNaN(categoryId)) {
                 try {
-                    // IMPORTANT: Frontend sends WooCommerce category IDs (woo_commerce_id), NOT internal DB ids
-                    // Must use WHERE woo_commerce_id = $1, NOT WHERE id = $1
-                    const catRes = await pool.query('SELECT name, slug FROM categories WHERE woo_commerce_id = $1', [categoryId]);
+                    // Categories were imported from CSV so woo_commerce_id is null for all.
+                    // The frontend sends cat.woo_commerce_id || cat.id which falls back to the internal DB id.
+                    // Therefore we look up by internal id (the primary key) to get the category name.
+                    const catRes = await pool.query('SELECT name, slug FROM categories WHERE id = $1', [categoryId]);
                     let catName = '';
                     let catSlug = '';
                     if (catRes.rows.length > 0) {
@@ -312,7 +313,7 @@ router.get('/products', async (req, res) => {
                 // Re-fetch catName for the count query (same woo_commerce_id lookup)
                 let countCatName = '';
                 try {
-                    const countCatRes = await pool.query('SELECT name FROM categories WHERE woo_commerce_id = $1', [categoryId]);
+                    const countCatRes = await pool.query('SELECT name FROM categories WHERE id = $1', [categoryId]);
                     if (countCatRes.rows.length > 0) countCatName = countCatRes.rows[0].name;
                 } catch (e) { /* ignore */ }
 
