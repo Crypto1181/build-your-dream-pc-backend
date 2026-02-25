@@ -154,25 +154,33 @@ router.get('/products', async (req, res) => {
         if (category) {
             const categoryId = parseInt(category as string, 10);
             if (!isNaN(categoryId)) {
-                // Safely query JSONB categories array
-                // We handle two cases:
-                // 1. Array of objects with 'id' property: [{"id": 118, "name": "..."}, ...]
-                // 2. Array of integers (legacy/simple): [118, 119, ...]
-                // We use @> operator which is safe and efficient for both cases
-                query += ` AND (
-                    -- Check if it contains an object with this id
-                    categories @> ('[{"id": ' || $${paramIndex}::text || '}]')::jsonb
-                    OR
-                    -- Check if it contains the integer directly (for simple array format)
-                    categories @> ('[' || $${paramIndex}::text || ']')::jsonb
-                    OR
-                    -- Fallback string search for robustness (safe for any text)
-                    categories::text LIKE '%"id":' || $${paramIndex}::text || ',%' OR
-                    categories::text LIKE '%"id":' || $${paramIndex}::text || '}%' OR
-                    categories::text LIKE '%"id": ' || $${paramIndex}::text || ',%'
-                )`;
-                params.push(categoryId);
-                paramIndex++;
+                try {
+                    // Fetch category name to use for querying the JSON structured as {"name": "..."}
+                    const catRes = await pool.query('SELECT name FROM categories WHERE id = $1', [categoryId]);
+                    let catName = '';
+                    if (catRes.rows.length > 0) catName = catRes.rows[0].name;
+
+                    query += ` AND (
+                        categories @> ('[{"id": ' || $${paramIndex}::text || '}]')::jsonb
+                        OR
+                        categories @> ('[' || $${paramIndex}::text || ']')::jsonb
+                        OR
+                        categories::text LIKE '%"id":' || $${paramIndex}::text || ',%'
+                    `;
+
+                    if (catName) {
+                        // The imported products have categories stored as {"name": "Category Name"}
+                        query += ` OR categories @> ('[{"name": "' || REPLACE($${paramIndex + 1}::text, '"', '\\"') || '"}]')::jsonb`;
+                        params.push(categoryId, catName);
+                        paramIndex += 2;
+                    } else {
+                        params.push(categoryId);
+                        paramIndex++;
+                    }
+                    query += ` )`;
+                } catch (e) {
+                    logger.error('Error querying category name for filtering', e);
+                }
             }
         }
 
@@ -576,6 +584,54 @@ router.get('/categories', async (req, res) => {
             error: 'Failed to fetch categories',
             message: error.message,
         });
+    }
+});
+
+/**
+ * POST /api/categories/fix-hierarchy
+ * Temporary migration endpoint to fix category parents
+ */
+router.post('/categories/fix-hierarchy', async (req, res) => {
+    if (req.query.secret !== 'fixit') return res.status(403).json({ error: 'unauthorized' });
+    try {
+        const pool = getDatabasePool();
+        const catRes = await pool.query('SELECT * FROM categories');
+        const categories = catRes.rows;
+        const catByName = new Map(categories.map(c => [c.name, c]));
+
+        const productsRes = await pool.query('SELECT categories FROM products WHERE categories IS NOT NULL');
+        let updates = 0;
+
+        for (const row of productsRes.rows) {
+            const productCategories = row.categories || [];
+            for (const pCat of productCategories) {
+                if (pCat.path && pCat.path.includes('>')) {
+                    const parts = pCat.path.split('>').map((p: string) => p.trim());
+
+                    for (let i = 1; i < parts.length; i++) {
+                        const parentName = parts[i - 1];
+                        const childName = parts[i];
+
+                        const parent = catByName.get(parentName);
+                        const child = catByName.get(childName);
+
+                        // If parent and child exist, and child has no parent_id or wrong parent_id
+                        if (parent && child && child.parent_id !== parent.id) {
+                            await pool.query('UPDATE categories SET parent_id = $1 WHERE id = $2', [parent.id, child.id]);
+                            child.parent_id = parent.id;
+                            updates++;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Clear caches
+        cache.delete('categories:tree');
+        cache.delete('categories:all');
+        res.json({ success: true, message: `Hierarchy fixed. Updated ${updates} categories.` });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
     }
 });
 
