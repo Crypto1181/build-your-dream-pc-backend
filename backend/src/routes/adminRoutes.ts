@@ -419,6 +419,8 @@ router.post('/import/csv', requireAdmin, upload.single('csv'), async (req: AuthR
         const csvContent = req.file.buffer.toString('utf8');
 
         const records: any[] = [];
+        const categoryMap = new Map<string, { name: string, slug: string }>();
+
         const parser = parse(csvContent, {
             columns: true,
             skip_empty_lines: true,
@@ -462,7 +464,15 @@ router.post('/import/csv', requireAdmin, upload.single('csv'), async (req: AuthR
                     const categoryPaths = categoriesRaw.split(',').map((c: string) => c.trim()).filter(Boolean);
                     const categoriesJson = categoryPaths.map((path: string) => {
                         const parts = path.split('>').map((p: string) => p.trim());
-                        return { name: parts[parts.length - 1], path };
+                        const catName = parts[parts.length - 1];
+                        const catSlug = makeSlug(catName);
+
+                        // Keep track of unique categories to insert into categories table
+                        if (!categoryMap.has(catSlug)) {
+                            categoryMap.set(catSlug, { name: catName, slug: catSlug });
+                        }
+
+                        return { name: catName, path };
                     });
 
                     // Parse images
@@ -561,6 +571,23 @@ router.post('/import/csv', requireAdmin, upload.single('csv'), async (req: AuthR
                     importProgress.processed++;
                     importProgress.errors++;
                     logger.error(`CSV import error [ID=${record['ID']}]: code=${recordError.code} msg=${recordError.message}`);
+                }
+            }
+        }
+
+        // Insert all collected categories
+        if (categoryMap.size > 0) {
+            logger.info(`Inserting ${categoryMap.size} unique categories...`);
+            for (const cat of categoryMap.values()) {
+                try {
+                    await pool.query(
+                        `INSERT INTO categories (name, slug)
+                         VALUES ($1, $2)
+                         ON CONFLICT (slug) DO NOTHING`,
+                        [cat.name, cat.slug]
+                    );
+                } catch (catErr: any) {
+                    logger.error(`Failed to insert category ${cat.name}: ${catErr.message}`);
                 }
             }
         }
