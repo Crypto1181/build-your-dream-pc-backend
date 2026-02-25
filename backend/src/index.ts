@@ -72,7 +72,8 @@ const allowedOrigins = [
   'https://www.techtitan-lb.com',
   'http://techtitan-lb.com',
   'http://www.techtitan-lb.com',
-  'https://build-your-dream-pc-backend.onrender.com', // Production Admin Panel
+  'https://build-your-dream-pc-backend.onrender.com', // Production Admin Panel (Render)
+  'https://build-your-dream-pc-backend-production.up.railway.app', // Production Admin Panel (Railway)
 ];
 
 // Add CORS_ORIGIN env var if set (can be comma-separated for multiple origins)
@@ -146,7 +147,8 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
   logger.error('Unhandled error:', err);
   res.status(500).json({
     error: 'Internal server error',
-    message: NODE_ENV === 'development' ? err.message : 'Something went wrong',
+    message: err.message, // Temp: always show message to debug Railway issue
+    stack: err.stack?.split('\n').slice(0, 5).join(' | '),
   });
 });
 
