@@ -426,6 +426,7 @@ router.post('/import/csv', requireAdmin, upload.single('csv'), async (req: AuthR
             quote: '"',
             escape: '"',
             trim: true,
+            bom: true, // MUST HAVE: WooCommerce CSVs have a hidden \uFEFF BOM at the start!
         });
 
         for await (const record of parser) {
