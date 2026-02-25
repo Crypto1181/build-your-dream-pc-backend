@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS categories (
     id SERIAL PRIMARY KEY,
     woo_commerce_id INTEGER UNIQUE,
     name VARCHAR(255) NOT NULL,
-    slug VARCHAR(255) NOT NULL,
+    slug VARCHAR(255) UNIQUE NOT NULL,
     description TEXT,
     parent_id INTEGER REFERENCES categories(id) ON DELETE SET NULL,
     image_url TEXT,
