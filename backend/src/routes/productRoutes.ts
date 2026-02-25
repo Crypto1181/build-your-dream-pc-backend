@@ -7,13 +7,13 @@ import { cache } from '../utils/cache';
 const router = Router();
 
 const hasWooCommerce =
-  (process.env.WOOCOMMERCE_CONSUMER_KEY && process.env.WOOCOMMERCE_CONSUMER_SECRET) ||
-  (process.env.WOOCOMMERCE_SITE1_KEY && process.env.WOOCOMMERCE_SITE1_SECRET);
+    (process.env.WOOCOMMERCE_CONSUMER_KEY && process.env.WOOCOMMERCE_CONSUMER_SECRET) ||
+    (process.env.WOOCOMMERCE_SITE1_KEY && process.env.WOOCOMMERCE_SITE1_SECRET);
 
 // Helper function to set cache headers
 const setCacheHeaders = (res: any, maxAge: number = 300) => {
-  res.set('Cache-Control', `public, max-age=${maxAge}, stale-while-revalidate=60`);
-  res.set('Vary', 'Accept-Encoding');
+    res.set('Cache-Control', `public, max-age=${maxAge}, stale-while-revalidate=60`);
+    res.set('Vary', 'Accept-Encoding');
 };
 
 /**
@@ -53,7 +53,7 @@ router.get('/woocommerce/products', async (req, res) => {
             orderby: orderby as string,
             order: order as string,
         });
-        
+
         // Add woo_commerce_id to match database format expected by frontend
         // The frontend backendApi.ts -> transformBackendProductToWooCommerce expects certain fields
         const products = result.products.map((p: any) => ({
@@ -102,7 +102,7 @@ router.get('/products', async (req, res) => {
 
         // Create cache key from query params
         const cacheKey = `products:${JSON.stringify({ page, per_page, category, search, pc_category, featured, orderby, order })}`;
-        
+
         // Check cache first (only for non-search queries to avoid stale results)
         // IMPORTANT: Don't use cache for category queries that returned 0 results (likely stale/fixed query)
         // ALSO: Don't cache random order queries, otherwise everyone sees the same "random" products
@@ -218,7 +218,7 @@ router.get('/products', async (req, res) => {
         // Log results for debugging
         if (category) {
             logger.info(`Found ${result.rows.length} products for category ${category}`);
-            
+
             // If no products found, try fallback: query WooCommerce directly
             if (result.rows.length === 0) {
                 if (hasWooCommerce) {
@@ -232,7 +232,7 @@ router.get('/products', async (req, res) => {
                             orderby: orderby as string,
                             order: order as string,
                         });
-                        
+
                         const inStockProducts = wooCommerceResult.products.filter((p: any) => p.stock_status !== 'outofstock');
 
                         if (inStockProducts.length > 0) {
@@ -258,7 +258,7 @@ router.get('/products', async (req, res) => {
                 } else {
                     logger.warn(`No products found in database for category ${category}, and WooCommerce is not configured`);
                 }
-                
+
                 // Debug: Check if any products exist with this category in a different format
                 const debugQuery = `SELECT id, name, categories FROM products WHERE status = 'publish' AND categories IS NOT NULL LIMIT 3`;
                 const debugResult = await pool.query(debugQuery);
@@ -347,7 +347,7 @@ router.get('/products', async (req, res) => {
         res.json(response);
     } catch (error: any) {
         logger.error('Error fetching products:', error);
-        
+
         // Return detailed error in response for debugging (remove in production later if needed)
         res.status(500).json({
             error: 'Failed to fetch products',
@@ -373,7 +373,7 @@ router.get('/products/:id', async (req, res) => {
                 message: 'Product ID must be a number'
             });
         }
-        
+
         // Check cache first
         const cacheKey = `product:${productId}`;
         const cached = cache.get(cacheKey);
@@ -383,7 +383,7 @@ router.get('/products/:id', async (req, res) => {
         }
 
         const pool = getDatabasePool();
- 
+
         const result = await pool.query(
             `SELECT * FROM products 
              WHERE id = $1 OR woo_commerce_id = $1 
@@ -401,13 +401,13 @@ router.get('/products/:id', async (req, res) => {
                 try {
                     logger.info(`Product ${productId} not found in DB, trying WooCommerce fallback...`);
                     const product = await wooCommerceClient.fetchProductById('site1', productId);
-                    
+
                     if (product) {
                         const transformedProduct = {
                             ...product,
                             woo_commerce_id: product.id,
                         };
-                        
+
                         cache.set(cacheKey, transformedProduct, 5 * 60 * 1000);
                         setCacheHeaders(res, 300);
                         return res.json(transformedProduct);
@@ -447,18 +447,18 @@ router.get('/products/:id', async (req, res) => {
 router.put('/categories/reorder', async (req, res) => {
     try {
         const { categories } = req.body; // Array of { id, display_order }
-        
+
         if (!Array.isArray(categories)) {
             return res.status(400).json({ error: 'Invalid input. Expected array of categories.' });
         }
 
         const pool = getDatabasePool();
-        
+
         // Use a transaction for safety
         const client = await pool.connect();
         try {
             await client.query('BEGIN');
-            
+
             for (const cat of categories) {
                 if (cat.id !== undefined && cat.display_order !== undefined) {
                     await client.query(
@@ -467,7 +467,7 @@ router.put('/categories/reorder', async (req, res) => {
                     );
                 }
             }
-            
+
             await client.query('COMMIT');
         } catch (e) {
             await client.query('ROLLBACK');
@@ -501,7 +501,11 @@ router.get('/categories/tree', async (req, res) => {
         }
 
         const pool = getDatabasePool();
-        const result = await pool.query('SELECT * FROM categories ORDER BY display_order ASC, name ASC');
+        const result = await pool.query(`
+            SELECT c.*, (SELECT COUNT(*)::int FROM products p, jsonb_array_elements(p.categories) as pc WHERE pc->>'name' = c.name) as count
+            FROM categories c 
+            ORDER BY c.display_order ASC, c.name ASC
+        `);
         const categories = result.rows;
 
         // Build tree
@@ -553,9 +557,11 @@ router.get('/categories', async (req, res) => {
 
         const pool = getDatabasePool();
 
-        const result = await pool.query(
-            'SELECT * FROM categories ORDER BY display_order ASC, name ASC'
-        );
+        const result = await pool.query(`
+            SELECT c.*, (SELECT COUNT(*)::int FROM products p, jsonb_array_elements(p.categories) as pc WHERE pc->>'name' = c.name) as count
+            FROM categories c 
+            ORDER BY c.display_order ASC, c.name ASC
+        `);
 
         // Cache the result
         cache.set(cacheKey, result.rows, 10 * 60 * 1000); // 10 minutes
@@ -693,7 +699,7 @@ router.post('/sync/products', async (req, res) => {
 router.post('/cache/clear', async (req, res) => {
     try {
         const { category } = req.body;
-        
+
         if (category) {
             // Clear cache for specific category
             const categoryId = parseInt(category, 10);
@@ -733,7 +739,7 @@ router.get('/debug/category/:id', async (req, res) => {
         }
 
         const pool = getDatabasePool();
-        
+
         // Get a sample product with this category to see the format
         const sampleQuery = `
             SELECT id, name, categories 
@@ -743,9 +749,9 @@ router.get('/debug/category/:id', async (req, res) => {
             AND categories::text != '[]'
             LIMIT 5
         `;
-        
+
         const sampleResult = await pool.query(sampleQuery);
-        
+
         // Try to find products with this category using different query methods
         const testQueries = [
             {

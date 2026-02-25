@@ -610,7 +610,11 @@ router.post('/import/csv', requireAdmin, upload.single('csv'), async (req: AuthR
 router.get('/categories', requireAdmin, async (req: AuthRequest, res: Response) => {
     try {
         const pool = getDatabasePool();
-        const result = await pool.query('SELECT * FROM categories ORDER BY display_order ASC, name ASC');
+        const result = await pool.query(`
+            SELECT c.*, (SELECT COUNT(*)::int FROM products p, jsonb_array_elements(p.categories) as pc WHERE pc->>'name' = c.name) as count
+            FROM categories c 
+            ORDER BY c.display_order ASC, c.name ASC
+        `);
         res.json(result.rows);
     } catch (error: any) {
         logger.error('Error fetching categories:', error);
