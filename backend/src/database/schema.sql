@@ -90,19 +90,21 @@ CREATE TABLE IF NOT EXISTS sync_logs (
     errors JSONB,
     started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     completed_at TIMESTAMP,
-    duration_seconds INTEGER,
-    INDEX idx_sync_logs_status (status),
-    INDEX idx_sync_logs_started (started_at)
+    duration_seconds INTEGER
 );
+
+CREATE INDEX IF NOT EXISTS idx_sync_logs_status ON sync_logs(status);
+CREATE INDEX IF NOT EXISTS idx_sync_logs_started ON sync_logs(started_at);
 
 -- Cache metadata table (for cache invalidation)
 CREATE TABLE IF NOT EXISTS cache_metadata (
     cache_key VARCHAR(255) PRIMARY KEY,
     cache_type VARCHAR(50) NOT NULL, -- 'products', 'categories', 'search'
     last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    expires_at TIMESTAMP,
-    INDEX idx_cache_expires (expires_at)
+    expires_at TIMESTAMP
 );
+
+CREATE INDEX IF NOT EXISTS idx_cache_expires ON cache_metadata(expires_at);
 
 -- Function to update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
