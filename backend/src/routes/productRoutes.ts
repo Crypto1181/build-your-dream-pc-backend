@@ -597,7 +597,10 @@ router.post('/categories/fix-hierarchy', async (req, res) => {
         const pool = getDatabasePool();
         const catRes = await pool.query('SELECT * FROM categories');
         const categories = catRes.rows;
-        const catByName = new Map(categories.map(c => [c.name, c]));
+
+        // Helper to normalize strings to slugs for robust matching
+        const makeSlug = (str: string) => str.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+        const catBySlug = new Map(categories.map(c => [makeSlug(c.name), c]));
 
         const productsRes = await pool.query('SELECT categories FROM products WHERE categories IS NOT NULL');
         let updates = 0;
@@ -609,11 +612,11 @@ router.post('/categories/fix-hierarchy', async (req, res) => {
                     const parts = pCat.path.split('>').map((p: string) => p.trim());
 
                     for (let i = 1; i < parts.length; i++) {
-                        const parentName = parts[i - 1];
-                        const childName = parts[i];
+                        const parentSlug = makeSlug(parts[i - 1]);
+                        const childSlug = makeSlug(parts[i]);
 
-                        const parent = catByName.get(parentName);
-                        const child = catByName.get(childName);
+                        const parent = catBySlug.get(parentSlug);
+                        const child = catBySlug.get(childSlug);
 
                         // If parent and child exist, and child has no parent_id or wrong parent_id
                         if (parent && child && child.parent_id !== parent.id) {
