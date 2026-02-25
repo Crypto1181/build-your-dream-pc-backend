@@ -155,21 +155,34 @@ router.get('/products', async (req, res) => {
             const categoryId = parseInt(category as string, 10);
             if (!isNaN(categoryId)) {
                 try {
-                    // Fetch category name to use for querying the JSON structured as {"name": "..."}
-                    const catRes = await pool.query('SELECT name FROM categories WHERE id = $1', [categoryId]);
+                    // IMPORTANT: Frontend sends WooCommerce category IDs (woo_commerce_id), NOT internal DB ids
+                    // Must use WHERE woo_commerce_id = $1, NOT WHERE id = $1
+                    const catRes = await pool.query('SELECT name, slug FROM categories WHERE woo_commerce_id = $1', [categoryId]);
                     let catName = '';
-                    if (catRes.rows.length > 0) catName = catRes.rows[0].name;
+                    let catSlug = '';
+                    if (catRes.rows.length > 0) {
+                        catName = catRes.rows[0].name;
+                        catSlug = catRes.rows[0].slug;
+                    }
 
+                    // Match products whose categories JSONB contains the WooCommerce category ID
+                    // Products may be stored with: {"id": wcId, ...} OR {"name": "Category Name"} OR just [wcId]
                     query += ` AND (
                         categories @> ('[{"id": ' || $${paramIndex}::text || '}]')::jsonb
                         OR
                         categories @> ('[' || $${paramIndex}::text || ']')::jsonb
                         OR
                         categories::text LIKE '%"id":' || $${paramIndex}::text || ',%'
+                        OR
+                        categories::text LIKE '%"id":' || $${paramIndex}::text || '}%'
+                        OR
+                        categories::text LIKE '%"id": ' || $${paramIndex}::text || ',%'
+                        OR
+                        categories::text LIKE '%"id": ' || $${paramIndex}::text || '}%'
                     `;
 
                     if (catName) {
-                        // The imported products have categories stored as {"name": "Category Name"}
+                        // Also match by category name (for products imported via CSV without IDs)
                         query += ` OR categories @> ('[{"name": "' || REPLACE($${paramIndex + 1}::text, '"', '\\"') || '"}]')::jsonb`;
                         params.push(categoryId, catName);
                         paramIndex += 2;
@@ -296,17 +309,35 @@ router.get('/products', async (req, res) => {
         if (category) {
             const categoryId = parseInt(category as string, 10);
             if (!isNaN(categoryId)) {
+                // Re-fetch catName for the count query (same woo_commerce_id lookup)
+                let countCatName = '';
+                try {
+                    const countCatRes = await pool.query('SELECT name FROM categories WHERE woo_commerce_id = $1', [categoryId]);
+                    if (countCatRes.rows.length > 0) countCatName = countCatRes.rows[0].name;
+                } catch (e) { /* ignore */ }
+
                 countQuery += ` AND (
-                    categories @> ('[{"id": ' || $${countParamIndex} || '}]')::jsonb
+                    categories @> ('[{"id": ' || $${countParamIndex}::text || '}]')::jsonb
                     OR
-                    categories @> ('[' || $${countParamIndex} || ']')::jsonb
+                    categories @> ('[' || $${countParamIndex}::text || ']')::jsonb
                     OR
-                    categories::text LIKE '%"id":' || $${countParamIndex} || ',%' OR
-                    categories::text LIKE '%"id":' || $${countParamIndex} || '}%' OR
-                    categories::text LIKE '%"id": ' || $${countParamIndex} || ',%'
-                )`;
-                countParams.push(categoryId);
-                countParamIndex++;
+                    categories::text LIKE '%"id":' || $${countParamIndex}::text || ',%'
+                    OR
+                    categories::text LIKE '%"id":' || $${countParamIndex}::text || '}%'
+                    OR
+                    categories::text LIKE '%"id": ' || $${countParamIndex}::text || ',%'
+                    OR
+                    categories::text LIKE '%"id": ' || $${countParamIndex}::text || '}%'
+                `;
+                if (countCatName) {
+                    countQuery += ` OR categories @> ('[{"name": "' || REPLACE($${countParamIndex + 1}::text, '"', '\\"') || '"}]')::jsonb`;
+                    countParams.push(categoryId, countCatName);
+                    countParamIndex += 2;
+                } else {
+                    countParams.push(categoryId);
+                    countParamIndex++;
+                }
+                countQuery += `)`;
             }
         }
 
